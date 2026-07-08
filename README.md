@@ -605,3 +605,255 @@ document.getElementById('addSubjectBtn').addEventListener('click', ()=>{
     await saveSubjects(); closeModal(); renderSubjects();
   };
 });
+/* ================= TASKS ================= */
+function taskModal(existing, prefillDate){
+  const opts = STATE.subjects.map(s=>`<option value="${s.name}" ${existing&&existing.subject===s.name?'selected':''}>${s.name}</option>`).join('');
+  openModal(`
+    <h3 style="margin-bottom:14px;">${existing?'Editar tarea':'Nueva tarea'}</h3>
+    <label>Título</label><input id="tTitle" value="${existing?existing.title:''}" style="margin-bottom:10px;">
+    <label>Materia</label><select id="tSubj" style="margin-bottom:10px;">${opts}</select>
+    <label>Fecha</label><input id="tDate" type="date" value="${existing?existing.date:(prefillDate||todayISO())}" style="margin-bottom:10px;">
+    <label>Prioridad</label>
+    <select id="tPrio" style="margin-bottom:10px;">
+      <option value="low" ${existing&&existing.priority==='low'?'selected':''}>Baja</option>
+      <option value="medium" ${!existing||existing.priority==='medium'?'selected':''}>Media</option>
+      <option value="high" ${existing&&existing.priority==='high'?'selected':''}>Alta</option>
+    </select>
+    <label style="display:flex; align-items:center; gap:8px; margin-bottom:10px;"><input type="checkbox" id="tExam" style="width:auto;" ${existing&&existing.isExam?'checked':''}> Es examen/parcial</label>
+    <label>Notas</label><textarea id="tNotes" rows="2" style="margin-bottom:16px;">${existing?(existing.notes||''):''}</textarea>
+    <div style="display:flex; gap:8px;">
+      <button class="btn" id="tSave">Guardar</button>
+      ${existing?'<button class="btn red" id="tDelete">Eliminar</button>':''}
+      <button class="btn ghost" onclick="closeModal()">Cancelar</button>
+    </div>
+  `);
+  document.getElementById('tSave').onclick = async ()=>{
+    const title = document.getElementById('tTitle').value.trim();
+    if(!title) return;
+    const data = {
+      title, subject:document.getElementById('tSubj').value, date:document.getElementById('tDate').value,
+      priority:document.getElementById('tPrio').value, isExam:document.getElementById('tExam').checked,
+      notes:document.getElementById('tNotes').value
+    };
+    if(existing){ Object.assign(existing, data); }
+    else { STATE.tasks.push({id:uid(), done:false, ...data}); }
+    await saveTasks(); closeModal(); renderTasks(); renderCalendar(); renderDashboard();
+  };
+  if(existing){
+    document.getElementById('tDelete').onclick = async ()=>{
+      STATE.tasks = STATE.tasks.filter(t=>t.id!==existing.id);
+      await saveTasks(); closeModal(); renderTasks(); renderCalendar(); renderDashboard();
+    };
+  }
+}
+document.getElementById('addTaskBtn').addEventListener('click', ()=>taskModal(null));
+document.getElementById('taskFilter').addEventListener('change', renderTasks);
+
+function subjColor(name){ const s = STATE.subjects.find(x=>x.name===name); return s?s.color:'#7f93ab'; }
+
+async function toggleTask(id){
+  const t = STATE.tasks.find(x=>x.id===id);
+  t.done = !t.done;
+  if(t.done){
+    const d = todayISO();
+    if(!STATE.streakLog.includes(d)) STATE.streakLog.push(d);
+    await saveStreak();
+  }
+  await saveTasks(); renderTasks(); renderCalendar(); renderDashboard(); renderStats();
+}
+window.toggleTask = toggleTask;
+window.editTask = (id)=>taskModal(STATE.tasks.find(t=>t.id===id));
+
+function renderTasks(){
+  const filter = document.getElementById('taskFilter').value;
+  let list = [...STATE.tasks].sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  if(filter==='pending') list = list.filter(t=>!t.done);
+  if(filter==='done') list = list.filter(t=>t.done);
+  const el = document.getElementById('tasksList');
+  if(!list.length){ el.innerHTML = '<div class="empty">No hay tareas para mostrar.</div>'; return; }
+  el.innerHTML = list.map(t=>`
+    <div class="task ${t.done?'done':''}">
+      <div class="check ${t.done?'on':''}" onclick="toggleTask('${t.id}')">${t.done?'✓':''}</div>
+      <div class="task-body" onclick="editTask('${t.id}')">
+        <div class="task-title">${t.isExam?'📖 ':''}${t.title}</div>
+        <div class="task-meta">
+          <span class="chip" style="background:${subjColor(t.subject)}22; color:${subjColor(t.subject)};">${t.subject||'—'}</span>
+          <span>${t.date||'sin fecha'}</span>
+          <span>${({low:'baja',medium:'media',high:'alta'})[t.priority]||''}</span>
+        </div>
+      </div>
+    </div>
+  `).join('');
+      }
+      /* ================= CALENDAR ================= */
+const DOW = ['LUN','MAR','MIÉ','JUE','VIE','SÁB','DOM'];
+function renderCalendar(){
+  const y = calCursor.getFullYear(), m = calCursor.getMonth();
+  document.getElementById('calMonthLabel').textContent = calCursor.toLocaleDateString('es-AR',{month:'long', year:'numeric'}).toUpperCase();
+  document.getElementById('calDow').innerHTML = DOW.map(d=>`<div class="cal-dow">${d}</div>`).join('');
+
+  const firstDay = new Date(y,m,1);
+  let startOffset = (firstDay.getDay()+6)%7; // Monday=0
+  const daysInMonth = new Date(y,m+1,0).getDate();
+  const daysPrevMonth = new Date(y,m,0).getDate();
+
+  let cells = [];
+  for(let i=startOffset;i>0;i--) cells.push({day:daysPrevMonth-i+1, other:true});
+  for(let d=1; d<=daysInMonth; d++) cells.push({day:d, other:false});
+  while(cells.length % 7 !== 0) cells.push({day:cells.length, other:true});
+
+  const todayStr = todayISO();
+  document.getElementById('calGrid').innerHTML = cells.map(c=>{
+    const dateStr = c.other? '' : `${y}-${String(m+1).padStart(2,'0')}-${String(c.day).padStart(2,'0')}`;
+    const dayTasks = c.other? [] : STATE.tasks.filter(t=>t.date===dateStr);
+    const dotsHtml = dayTasks.slice(0,4).map(t=>`<span style="background:${subjColor(t.subject)}"></span>`).join('');
+    return `<div class="cal-day ${c.other?'other':''} ${dateStr===todayStr?'today':''}" ${!c.other?`onclick="openDay('${dateStr}')"`:''}>
+      <div>${c.day}</div><div class="dots">${dotsHtml}</div>
+    </div>`;
+  }).join('');
+}
+document.getElementById('calPrev').addEventListener('click', ()=>{ calCursor.setMonth(calCursor.getMonth()-1); renderCalendar(); });
+document.getElementById('calNext').addEventListener('click', ()=>{ calCursor.setMonth(calCursor.getMonth()+1); renderCalendar(); });
+
+window.openDay = function(dateStr){
+  selectedDay = dateStr;
+  document.getElementById('dayPanel').style.display='block';
+  const d = new Date(dateStr+'T00:00:00');
+  document.getElementById('dayPanelTitle').textContent = d.toLocaleDateString('es-AR',{weekday:'long', day:'numeric', month:'long'}).toUpperCase();
+  const dayTasks = STATE.tasks.filter(t=>t.date===dateStr);
+  const el = document.getElementById('dayTasks');
+  el.innerHTML = dayTasks.length? dayTasks.map(t=>`
+    <div class="task ${t.done?'done':''}">
+      <div class="check ${t.done?'on':''}" onclick="toggleTask('${t.id}')">${t.done?'✓':''}</div>
+      <div class="task-body" onclick="editTask('${t.id}')">
+        <div class="task-title">${t.isExam?'📖 ':''}${t.title}</div>
+        <div class="task-meta"><span class="chip" style="background:${subjColor(t.subject)}22; color:${subjColor(t.subject)};">${t.subject}</span></div>
+      </div>
+    </div>`).join('') : '<div class="empty">Sin tareas este día.</div>';
+};
+document.getElementById('addTaskFromDay').addEventListener('click', ()=>{
+  if(selectedDay) taskModal(null, selectedDay);
+});
+
+/* ================= STATS ================= */
+function renderStats(){
+  // streak: consecutive days up to today with completion
+  let streak = 0;
+  let cursor = new Date();
+  while(true){
+    const iso = cursor.toISOString().slice(0,10);
+    if(STATE.streakLog.includes(iso)){ streak++; cursor.setDate(cursor.getDate()-1); }
+    else break;
+  }
+  document.getElementById('statStreak').textContent = streak;
+
+  const total = STATE.tasks.length, done = STATE.tasks.filter(t=>t.done).length;
+  document.getElementById('statDonePct').textContent = total? Math.round(done/total*100)+'%' : '0%';
+
+  const bySubj = {};
+  STATE.tasks.forEach(t=>{ bySubj[t.subject]=(bySubj[t.subject]||0)+1; });
+  const top = Object.entries(bySubj).sort((a,b)=>b[1]-a[1])[0];
+  document.getElementById('statTopSubject').textContent = top? top[0] : '--';
+
+  const maxCount = Math.max(1, ...Object.values(bySubj));
+  const barsEl = document.getElementById('subjectBars');
+  if(!Object.keys(bySubj).length){ barsEl.innerHTML = '<div class="empty">Sin datos todavía.</div>'; }
+  else{
+    barsEl.innerHTML = Object.entries(bySubj).map(([name,count])=>`
+      <div style="margin-bottom:12px;">
+        <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px;"><span>${name}</span><span class="mono-data">${count}</span></div>
+        <div class="bar-track"><div class="bar-fill" style="width:${count/maxCount*100}%; background:${subjColor(name)};"></div></div>
+      </div>`).join('');
+  }
+}
+
+/* ================= UNIVERSE: moon + sun (real math, no external APIs) ================= */
+function moonIllumination(date){
+  // Days since known new moon reference (2000-01-06 18:14 UTC)
+  const ref = Date.UTC(2000,0,6,18,14,0);
+  const synodic = 29.530588853;
+  const days = (date.getTime() - ref) / 86400000;
+  let phase = (days % synodic) / synodic;
+  if(phase < 0) phase += 1;
+  const illum = (1 - Math.cos(2*Math.PI*phase)) / 2;
+  let name, emoji;
+  if(phase < 0.03 || phase > 0.97){name='Luna nueva'; emoji='🌑';}
+  else if(phase < 0.22){name='Luna creciente'; emoji='🌒';}
+  else if(phase < 0.28){name='Cuarto creciente'; emoji='🌓';}
+  else if(phase < 0.47){name='Gibosa creciente'; emoji='🌔';}
+  else if(phase < 0.53){name='Luna llena'; emoji='🌕';}
+  else if(phase < 0.72){name='Gibosa menguante'; emoji='🌖';}
+  else if(phase < 0.78){name='Cuarto menguante'; emoji='🌗';}
+  else {name='Luna menguante'; emoji='🌘';}
+  return {phase, illum, name, emoji};
+}
+function sunTimes(date, lat, lon){
+  // Simplified NOAA solar calculation
+  const rad = Math.PI/180, deg = 180/Math.PI;
+  const start = Date.UTC(date.getFullYear(),0,1);
+  const N = Math.floor((Date.UTC(date.getFullYear(),date.getMonth(),date.getDate()) - start)/86400000) + 1;
+  const lngHour = lon/15;
+  function calc(isRise){
+    const t = N + ((isRise?6:18) - lngHour)/24;
+    const M = (0.9856*t) - 3.289;
+    let L = M + (1.916*Math.sin(M*rad)) + (0.020*Math.sin(2*M*rad)) + 282.634;
+    L = ((L%360)+360)%360;
+    let RA = deg*Math.atan(0.91764*Math.tan(L*rad));
+    RA = ((RA%360)+360)%360;
+    const Lq = Math.floor(L/90)*90; const RAq = Math.floor(RA/90)*90;
+    RA = RA + (Lq - RAq); RA = RA/15;
+    const sinDec = 0.39782*Math.sin(L*rad); const cosDec = Math.cos(Math.asin(sinDec));
+    const cosH = (Math.cos(90.833*rad) - (sinDec*Math.sin(lat*rad))) / (cosDec*Math.cos(lat*rad));
+    if(cosH>1 || cosH<-1) return null;
+    let H = isRise? 360-deg*Math.acos(cosH) : deg*Math.acos(cosH);
+    H = H/15;
+    const Tval = H + RA - (0.06571*t) - 6.622;
+    let UT = Tval - lngHour;
+    UT = ((UT%24)+24)%24;
+    return UT;
+  }
+  const riseUT = calc(true), setUT = calc(false);
+  function fmt(ut){
+    if(ut===null) return '--:--';
+    const localOffset = -date.getTimezoneOffset()/60;
+    let local = ut + localOffset;
+    local = ((local%24)+24)%24;
+    const h = Math.floor(local), min = Math.round((local-h)*60);
+    return `${String(h).padStart(2,'0')}:${String(min).padStart(2,'0')}`;
+  }
+  return {sunrise:fmt(riseUT), sunset:fmt(setUT)};
+}
+function paintMoon(el, illum, waning){
+  // simple shadow overlay representing illumination fraction
+  const pct = Math.round(illum*100);
+  const width = 100-pct;
+  el.style.width = width+'%';
+  el.style.left = waning? '0' : 'auto';
+  el.style.right = waning? 'auto' : '0';
+}
+let userLoc = {lat:-34.61, lon:-58.38, label:'Buenos Aires (aprox.)'}; // fallback: CABA
+function renderUniverseMini(){
+  const m = moonIllumination(new Date());
+  document.getElementById('moonNameMini').textContent = m.emoji+' '+m.name;
+  document.getElementById('moonPctMini').textContent = Math.round(m.illum*100)+'% iluminada';
+  paintMoon(document.getElementById('moonShadowMini'), m.illum, m.phase>0.5);
+  const st = sunTimes(new Date(), userLoc.lat, userLoc.lon);
+  document.getElementById('sunTimesMini').textContent = `☀ ${st.sunrise} / 🌇 ${st.sunset}`;
+}
+function renderUniverseFull(){
+  const m = moonIllumination(new Date());
+  document.getElementById('moonName').textContent = m.emoji+' '+m.name;
+  document.getElementById('moonPct').textContent = Math.round(m.illum*100)+'% iluminada';
+  paintMoon(document.getElementById('moonShadow'), m.illum, m.phase>0.5);
+  const st = sunTimes(new Date(), userLoc.lat, userLoc.lon);
+  document.getElementById('sunrise').textContent = st.sunrise;
+  document.getElementById('sunset').textContent = st.sunset;
+  document.getElementById('locLabel').textContent = 'Ubicación: '+userLoc.label;
+}
+if(navigator.geolocation){
+  navigator.geolocation.getCurrentPosition(pos=>{
+    userLoc = {lat:pos.coords.latitude, lon:pos.coords.longitude, label:'tu ubicación actual'};
+    renderUniverseMini(); renderUniverseFull();
+  }, ()=>{ /* keep fallback */ }, {timeout:4000});
+  }
+  
