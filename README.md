@@ -856,4 +856,298 @@ if(navigator.geolocation){
     renderUniverseMini(); renderUniverseFull();
   }, ()=>{ /* keep fallback */ }, {timeout:4000});
   }
-  
+  /* ================= LABORATORIO: FÍSICA ================= */
+const CONSTANTS = [
+  {name:'Velocidad de la luz', sym:'c', val:'2.998 × 10⁸', unit:'m/s'},
+  {name:'Constante de gravitación universal', sym:'G', val:'6.674 × 10⁻¹¹', unit:'N·m²/kg²'},
+  {name:'Constante de Planck', sym:'h', val:'6.626 × 10⁻³⁴', unit:'J·s'},
+  {name:'Constante de Boltzmann', sym:'k', val:'1.381 × 10⁻²³', unit:'J/K'},
+  {name:'Carga elemental', sym:'e', val:'1.602 × 10⁻¹⁹', unit:'C'},
+  {name:'Masa del electrón', sym:'mₑ', val:'9.109 × 10⁻³¹', unit:'kg'},
+  {name:'Masa del protón', sym:'mₚ', val:'1.673 × 10⁻²⁷', unit:'kg'},
+  {name:'Número de Avogadro', sym:'Nₐ', val:'6.022 × 10²³', unit:'mol⁻¹'},
+  {name:'Constante de los gases', sym:'R', val:'8.314', unit:'J/(mol·K)'},
+  {name:'Aceleración de la gravedad (Tierra)', sym:'g', val:'9.81', unit:'m/s²'},
+  {name:'Permitividad del vacío', sym:'ε₀', val:'8.854 × 10⁻¹²', unit:'F/m'},
+  {name:'Permeabilidad del vacío', sym:'μ₀', val:'1.257 × 10⁻⁶', unit:'N/A²'},
+];
+function renderLabConstants(){
+  const q = (document.getElementById('constSearch').value||'').toLowerCase();
+  const list = CONSTANTS.filter(c => c.name.toLowerCase().includes(q) || c.sym.toLowerCase().includes(q));
+  document.getElementById('constList').innerHTML = list.length ? list.map(c=>`
+    <div class="const-row">
+      <div><span class="const-name">${c.name}</span><span class="const-sym">${c.sym}</span></div>
+      <div class="const-val">${c.val} ${c.unit}</div>
+    </div>`).join('') : '<div class="empty">Sin resultados.</div>';
+}
+document.getElementById('constSearch').addEventListener('input', renderLabConstants);
+
+const FORMULAS = {
+  'Cinemática':[
+    {id:'k1', expr:'v = v₀ + a·t', desc:'Velocidad en MRUV'},
+    {id:'k2', expr:'x = x₀ + v₀·t + ½·a·t²', desc:'Posición en MRUV'},
+    {id:'k3', expr:'v² = v₀² + 2·a·Δx', desc:'Relación velocidad-desplazamiento'},
+    {id:'k4', expr:'x = x₀ + v·t', desc:'Posición en MRU'},
+  ],
+  'Dinámica':[
+    {id:'d1', expr:'F = m·a', desc:'Segunda ley de Newton'},
+    {id:'d2', expr:'p = m·v', desc:'Cantidad de movimiento (momento lineal)'},
+    {id:'d3', expr:'Fr = μ·N', desc:'Fuerza de rozamiento'},
+    {id:'d4', expr:'F = G·m₁·m₂/r²', desc:'Ley de gravitación universal'},
+  ],
+  'Trabajo y energía':[
+    {id:'e1', expr:'W = F·d·cos θ', desc:'Trabajo mecánico'},
+    {id:'e2', expr:'Ec = ½·m·v²', desc:'Energía cinética'},
+    {id:'e3', expr:'Ep = m·g·h', desc:'Energía potencial gravitatoria'},
+    {id:'e4', expr:'P = W/t', desc:'Potencia'},
+  ],
+  'Electricidad':[
+    {id:'el1', expr:'V = I·R', desc:'Ley de Ohm'},
+    {id:'el2', expr:'P = V·I', desc:'Potencia eléctrica'},
+    {id:'el3', expr:'F = k·q₁·q₂/r²', desc:'Ley de Coulomb'},
+    {id:'el4', expr:'C = Q/V', desc:'Capacitancia'},
+  ],
+  'Ondas y termodinámica':[
+    {id:'o1', expr:'v = λ·f', desc:'Velocidad de propagación de una onda'},
+    {id:'o2', expr:'Q = m·c·ΔT', desc:'Calor sensible'},
+    {id:'o3', expr:'PV = nRT', desc:'Ecuación de estado del gas ideal'},
+  ],
+};
+let favorites = [];
+let showOnlyFav = false;
+async function loadFavorites(){ favorites = await sGet('lab-favorites', []); }
+function renderFormulas(){
+  const el = document.getElementById('formulasList');
+  let html = '';
+  Object.entries(FORMULAS).forEach(([topic, items])=>{
+    const filtered = showOnlyFav ? items.filter(f=>favorites.includes(f.id)) : items;
+    if(!filtered.length) return;
+    html += `<div class="formula-group"><h4>${topic}</h4>` + filtered.map(f=>`
+      <div class="formula-card">
+        <div>
+          <div class="formula-expr">${f.expr}</div>
+          <div class="formula-desc">${f.desc}</div>
+        </div>
+        <button class="star-btn ${favorites.includes(f.id)?'on':''}" onclick="toggleFav('${f.id}')">★</button>
+      </div>`).join('') + `</div>`;
+  });
+  el.innerHTML = html || '<div class="empty">Sin favoritas todavía. Tocá la estrella de una fórmula para guardarla.</div>';
+}
+window.toggleFav = async function(id){
+  if(favorites.includes(id)) favorites = favorites.filter(x=>x!==id);
+  else favorites.push(id);
+  await sSet('lab-favorites', favorites);
+  renderFormulas();
+};
+document.getElementById('favFilterBtn').addEventListener('click', ()=>{
+  showOnlyFav = !showOnlyFav;
+  document.getElementById('favFilterBtn').textContent = showOnlyFav ? '⭐ Ver todas' : '⭐ Ver solo favoritas';
+  renderFormulas();
+});
+
+/* Unit converter */
+const UNIT_CATEGORIES = {
+  'Longitud': {base:'m', units:{'m':1, 'km':1000, 'cm':0.01, 'mm':0.001, 'mi':1609.34, 'ft':0.3048, 'in':0.0254}},
+  'Masa': {base:'kg', units:{'kg':1, 'g':0.001, 'mg':0.000001, 'ton':1000, 'lb':0.453592}},
+  'Tiempo': {base:'s', units:{'s':1, 'min':60, 'h':3600, 'día':86400}},
+  'Velocidad': {base:'m/s', units:{'m/s':1, 'km/h':0.277778, 'mi/h':0.44704}},
+  'Fuerza': {base:'N', units:{'N':1, 'kN':1000, 'dyn':0.00001, 'kgf':9.80665}},
+  'Energía': {base:'J', units:{'J':1, 'kJ':1000, 'cal':4.184, 'kcal':4184, 'eV':1.602e-19}},
+  'Presión': {base:'Pa', units:{'Pa':1, 'kPa':1000, 'atm':101325, 'bar':100000, 'mmHg':133.322}},
+};
+function populateConverter(){
+  const catSel = document.getElementById('convCategory');
+  catSel.innerHTML = Object.keys(UNIT_CATEGORIES).map(c=>`<option>${c}</option>`).join('') + '<option>Temperatura</option>';
+  updateConvUnits();
+}
+function updateConvUnits(){
+  const cat = document.getElementById('convCategory').value;
+  const fromSel = document.getElementById('convFrom'), toSel = document.getElementById('convTo');
+  let units;
+  if(cat==='Temperatura'){ units = ['°C','°F','K']; }
+  else{ units = Object.keys(UNIT_CATEGORIES[cat].units); }
+  fromSel.innerHTML = units.map(u=>`<option>${u}</option>`).join('');
+  toSel.innerHTML = units.map((u,i)=>`<option ${i===1?'selected':''}>${u}</option>`).join('');
+  computeConversion();
+}
+function tempToC(v,u){ if(u==='°C') return v; if(u==='°F') return (v-32)*5/9; if(u==='K') return v-273.15; }
+function cToTemp(c,u){ if(u==='°C') return c; if(u==='°F') return c*9/5+32; if(u==='K') return c+273.15; }
+function computeConversion(){
+  const cat = document.getElementById('convCategory').value;
+  const val = parseFloat(document.getElementById('convValue').value);
+  const from = document.getElementById('convFrom').value, to = document.getElementById('convTo').value;
+  const out = document.getElementById('convResult');
+  if(isNaN(val)){ out.textContent = '--'; return; }
+  let result;
+  if(cat==='Temperatura'){ result = cToTemp(tempToC(val, from), to); }
+  else{
+    const u = UNIT_CATEGORIES[cat].units;
+    const base = val * u[from];
+    result = base / u[to];
+  }
+  out.textContent = `${val} ${from} = ${Number(result.toPrecision(6))} ${to}`;
+}
+['convCategory'].forEach(id=>document.getElementById(id).addEventListener('change', updateConvUnits));
+['convFrom','convTo','convValue'].forEach(id=>document.getElementById(id).addEventListener('input', computeConversion));
+
+document.querySelectorAll('.lab-tab').forEach(tab=>{
+  tab.addEventListener('click', ()=>{
+    document.querySelectorAll('.lab-tab').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('.lab-panel').forEach(p=>p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('lab-'+tab.dataset.lab).classList.add('active');
+  });
+});
+  /* ================= AI (Claude API) ================= */
+function taskContextSummary(){
+  const pending = STATE.tasks.filter(t=>!t.done);
+  return {
+    subjects: STATE.subjects.map(s=>({name:s.name, progress:s.progress})),
+    pendingTasks: pending.map(t=>({id:t.id, title:t.title, subject:t.subject, date:t.date, priority:t.priority, isExam:t.isExam})),
+    today: todayISO()
+  };
+}
+async function callClaude(systemPrompt, userPrompt){
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({
+      model:'claude-sonnet-4-6',
+      max_tokens:1000,
+      system: systemPrompt,
+      messages:[{role:'user', content:userPrompt}]
+    })
+  });
+  const data = await res.json();
+  const text = (data.content||[]).map(b=>b.text||'').join('\n').trim();
+  return text;
+}
+function addMsg(role, text){
+  STATE.chat.push({role, text, ts:Date.now()});
+  saveChat();
+  renderChat();
+}
+function renderChat(){
+  const el = document.getElementById('chatLog');
+  el.innerHTML = STATE.chat.map(m=>`<div class="msg ${m.role}">${m.text.replace(/\n/g,'<br>')}</div>`).join('') || '<div class="msg system">Sin conversación todavía. Preguntale algo a QUARK.</div>';
+  el.scrollTop = el.scrollHeight;
+}
+document.getElementById('chatSend').addEventListener('click', sendChat);
+document.getElementById('chatInput').addEventListener('keydown', e=>{ if(e.key==='Enter') sendChat(); });
+async function sendChat(){
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  if(!text) return;
+  input.value='';
+  addMsg('user', text);
+  setThinking(true);
+  try{
+    const reply = await callClaude(
+      `Sos QUARK, la IA integrada de un planner académico para Sae, estudiante de profesorado de Física en Argentina. Respondé en español rioplatense, breve y claro, sin rodeos. Contexto de sus tareas y materias: ${JSON.stringify(taskContextSummary())}`,
+      text
+    );
+    addMsg('ai', reply || 'No pude generar una respuesta.');
+  }catch(e){ addMsg('system', 'Error de conexión con la IA.'); }
+  setThinking(false);
+}
+function setThinking(on){ document.getElementById('aiCore').classList.toggle('thinking', on); }
+
+document.getElementById('qaExplain').addEventListener('click', ()=>{
+  document.getElementById('chatInput').value = 'Explicame ';
+  document.getElementById('chatInput').focus();
+});
+document.getElementById('qaSchedule').addEventListener('click', async ()=>{
+  addMsg('user', 'Armame un cronograma de estudio para mi próximo examen.');
+  setThinking(true);
+  try{
+    const reply = await callClaude(
+      `Sos QUARK. Con este contexto de tareas y materias: ${JSON.stringify(taskContextSummary())}, armá un cronograma de estudio breve (por día) para el próximo examen marcado como isExam. Si no hay ninguno, decilo y sugerí cargar uno. Español rioplatense, formato con viñetas cortas.`,
+      'Generá el cronograma.'
+    );
+    addMsg('ai', reply);
+  }catch(e){ addMsg('system','Error de conexión con la IA.'); }
+  setThinking(false);
+});
+
+/* Autopilot reorganize: AI proposes changes, user must confirm each */
+document.getElementById('qaReorganize').addEventListener('click', async ()=>{
+  setThinking(true);
+  document.getElementById('proposeZone').innerHTML = '<div class="empty">Analizando...</div>';
+  try{
+    const raw = await callClaude(
+      `Sos QUARK, el núcleo de IA de un planner. Se te da una lista de tareas pendientes en JSON. Respondé SOLO con un array JSON (sin texto adicional, sin backticks) de hasta 4 sugerencias, cada objeto con: {"action":"delete"|"edit"|"note", "taskId":"<id o null>", "reason":"<motivo breve en español>", "suggestion":"<qué cambiarías, breve>"}. Usá "delete" solo para tareas claramente duplicadas o vencidas hace mucho; "edit" para reordenar prioridad o fecha; "note" para una observación general sin acción directa. Contexto: ${JSON.stringify(taskContextSummary())}`,
+      'Analizá y sugerí.'
+    );
+    let suggestions = [];
+    try{ suggestions = JSON.parse(raw.replace(/```json|```/g,'').trim()); }catch(e){ suggestions = []; }
+    renderProposals(suggestions);
+  }catch(e){
+    document.getElementById('proposeZone').innerHTML = '<div class="empty">Error al analizar.</div>';
+  }
+  setThinking(false);
+});
+function renderProposals(suggestions){
+  const zone = document.getElementById('proposeZone');
+  if(!suggestions.length){ zone.innerHTML = '<div class="empty">Sin sugerencias por ahora.</div>'; return; }
+  zone.innerHTML = suggestions.map((s,i)=>{
+    const task = STATE.tasks.find(t=>t.id===s.taskId);
+    return `<div class="propose-card">
+      <div style="font-size:13px; font-weight:700; color:var(--amber);">${task? task.title : 'Sugerencia general'}</div>
+      <div style="font-size:13px; margin:4px 0;">${s.suggestion||''}</div>
+      <div style="font-size:11px; color:var(--text-dim);">Motivo: ${s.reason||''}</div>
+      ${s.action==='delete' && task ? `<div style="margin-top:8px; display:flex; gap:8px;"><button class="btn small green" onclick="acceptDelete('${task.id}', this)">Aceptar y eliminar</button><button class="btn small ghost" onclick="this.closest('.propose-card').remove()">Rechazar</button></div>`
+      : `<div style="margin-top:8px;"><button class="btn small ghost" onclick="this.closest('.propose-card').remove()">Descartar</button></div>`}
+    </div>`;
+  }).join('');
+}
+window.acceptDelete = async function(taskId, btn){
+  STATE.tasks = STATE.tasks.filter(t=>t.id!==taskId);
+  await saveTasks();
+  btn.closest('.propose-card').remove();
+  renderTasks(); renderCalendar(); renderDashboard();
+};
+  /* ================= SETTINGS ================= */
+document.getElementById('resetData').addEventListener('click', async ()=>{
+  openModal(`
+    <h3 style="margin-bottom:14px;">¿Borrar todos los datos?</h3>
+    <p style="font-size:13px; color:var(--text-dim); margin-bottom:16px;">Esta acción no se puede deshacer.</p>
+    <div style="display:flex; gap:8px;">
+      <button class="btn red" id="confirmReset">Sí, borrar todo</button>
+      <button class="btn ghost" onclick="closeModal()">Cancelar</button>
+    </div>
+  `);
+  document.getElementById('confirmReset').onclick = async ()=>{
+    for(const k of ['settings-name','settings-autopilot','subjects','tasks','streak-log','ai-chat-log']){
+      try{ await window.storage.delete(k); }catch(e){}
+    }
+    closeModal();
+    location.reload();
+  };
+});
+document.getElementById('settingsName').addEventListener('change', async e=>{
+  STATE.name = e.target.value || 'Sae';
+  await sSet('settings-name', STATE.name);
+  renderDashboard();
+});
+
+/* ================= INIT ================= */
+async function init(){
+  await loadState();
+  document.getElementById('settingsName').value = STATE.name;
+  renderDashboard();
+  renderCalendar();
+  renderSubjects();
+  renderTasks();
+  renderStats();
+  renderChat();
+  renderUniverseFull();
+  await loadFavorites();
+  renderLabConstants();
+  renderFormulas();
+  populateConverter();
+}
+init();
+</script>
+</body>
+</html>
+
