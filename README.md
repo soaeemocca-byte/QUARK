@@ -1164,4 +1164,71 @@ init();
     { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }
   ]
 }
+const CACHE_NAME = 'quark-core-v1';
+const ASSETS = [
+  './',
+  './index.html',
+  './manifest.json',
+  'https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800&family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&display=swap'
+];
+
+// Instalar y almacenar la estructura base
+self.addEventListener('install', e => {
+  e.waitUntil(
+    caches.open(CACHE_NAME).then(cache => {
+      return cache.addAll(ASSETS);
+    }).then(() => self.skipWaiting())
+  );
+});
+
+// Activar y limpiar cachés obsoletas
+self.addEventListener('activate', e => {
+  e.waitUntil(
+    caches.keys().then(keys => {
+      return Promise.all(
+        keys.map(key => {
+          if (key !== CACHE_NAME) return caches.delete(key);
+        })
+      );
+    }).then(() => self.clients.claim())
+  );
+});
+
+// Estrategia de respuesta: Primero caché, si falla va a la red
+self.addEventListener('fetch', e => {
+  e.respondWith(
+    caches.match(e.request).then(cachedResponse => {
+      return cachedResponse || fetch(e.request);
+    })
+  );
+});
+/* ================= INITIALIZATION ================= */
+async function init(){
+  await loadState();
+  if(document.getElementById('settingsName')) document.getElementById('settingsName').value = STATE.name;
+  
+  // RENDERIZADORES BASE
+  renderDashboard();
+  renderCalendar();
+  renderSubjects();
+  renderTasks();
+  renderStats();
+  renderChat();
+  renderUniverseFull();
+  await loadFavorites();
+  renderLabConstants();
+  renderFormulas();
+  populateConverter();
+  
+  // REGISTRO DE SERVICE WORKER (Para permitir la instalación como App)
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js')
+      .then(() => console.log('QUARK Kernel SW: Registrado con éxito'))
+      .catch(err => console.error('QUARK Kernel SW: Error de registro', err));
+  }
+  
+  // Ejecuta la animación de arranque táctico en la terminal
+  launchBootSequence();
+}
+init();
 
