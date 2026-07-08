@@ -1044,3 +1044,164 @@ document.querySelectorAll('.lab-tab').forEach(tab=>{
     document.getElementById('lab-'+tab.dataset.lab).classList.add('active');
   });
 });
+/* ================= AI (Claude API Interface) ================= */
+function taskContextSummary(){
+  const pending = STATE.tasks.filter(t=>!t.done);
+  return {
+    subjects: STATE.subjects.map(s=>({name:s.name, progress:s.progress})),
+    pendingTasks: pending.map(t=>({id:t.id, title:t.title, subject:t.subject, date:t.date, priority:t.priority, isExam:t.isExam})),
+    today: todayISO()
+  };
+}
+async function callClaude(systemPrompt, userPrompt){
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({
+      model:'claude-sonnet-4-6',
+      max_tokens:1000,
+      system: systemPrompt,
+      messages:[{role:'user', content:userPrompt}]
+    })
+  });
+  const data = await res.json();
+  const text = (data.content||[]).map(b=>b.text||'').join('\n').trim();
+  return text;
+}
+function addMsg(role, text){
+  STATE.chat.push({role, text, ts:Date.now()});
+  saveChat();
+  renderChat();
+}
+function renderChat(){
+  const el = document.getElementById('chatLog');
+  if(!el) return;
+  el.innerHTML = STATE.chat.map(m=>`<div class="msg ${m.role}">${m.text.replace(/\n/g,'<br>')}</div>`).join('') || '<div class="msg system">Sin conversación todavía. Preguntale algo a QUARK.</div>';
+  el.scrollTop = el.scrollHeight;
+}
+document.getElementById('chatSend').addEventListener('click', sendChat);
+document.getElementById('chatInput').addEventListener('keydown', e=>{ if(e.key==='Enter') sendChat(); });
+async function sendChat(){
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  if(!text) return;
+  input.value='';
+  addMsg('user', text);
+  setThinking(true);
+  try{
+    const reply = await callClaude(
+      `Sos QUARK, la IA integrada de un planner académico para Sae, estudiante de profesorado de Física en Argentina. Respondé en español rioplatense, breve y claro, sin rodeos. Contexto de sus tareas y materias: ${JSON.stringify(taskContextSummary())}`,
+      text
+    );
+    addMsg('ai', reply || 'No pude generar una respuesta.');
+  }catch(e){ addMsg('system', 'Error de conexión con la IA.'); }
+  setThinking(false);
+}
+function setThinking(on){ 
+  const core = document.getElementById('aiCore');
+  if(core) core.classList.toggle('thinking', on); 
+}
+
+document.getElementById('qaExplain').addEventListener('click', ()=>{
+  document.getElementById('chatInput').value = 'Explicame ';
+  document.getElementById('chatInput').focus();
+});
+document.getElementById('qaSchedule').addEventListener('click', async ()=>{
+  addMsg('user', 'Armame un cronograma de estudio para mi próximo examen.');
+  setThinking(true);
+  try{
+    const reply = await callClaude(
+      `Sos QUARK. Con este contexto de tareas y materias: ${JSON.stringify(taskContextSummary())}, armá un cronograma de estudio breve (por día) para el próximo examen marcado como isExam. Si no hay ninguno, decilo y sugerí cargar uno. Español rioplatense, formato con viñetas cortas.`,
+      'Generá el cronograma.'
+    );
+    addMsg('ai', reply);
+  }catch(e){ addMsg('system','Error de conexión con la IA.'); }
+  setThinking(false);
+});
+
+document.getElementById('qaReorganize').addEventListener('click', async ()=>{
+  setThinking(true);
+  document.getElementById('proposeZone').innerHTML = '<div class="empty">Analizando...</div>';
+  try{
+    const raw = await callClaude(
+      `Sos QUARK, el núcleo de IA de un planner. Se te da una lista de tareas pendientes en JSON. Respondé SOLO con un array JSON (sin texto adicional, sin backticks) de hasta 4 sugerencias, cada objeto con: {"action":"delete"|"edit"|"note", "taskId":"<id o null>", "reason":"<motivo breve en español>", "suggestion":"<qué cambiarías, breve>"}. Usá "delete" solo para tareas claramente duplicadas o vencidas hace mucho; "edit" para reordenar prioridad o fecha; "note" para una observación general sin acción directa. Contexto: ${JSON.stringify(taskContextSummary())}`,
+      'Analizá y sugerí.'
+    );
+    let suggestions = [];
+    try{ suggestions = JSON.parse(raw.replace(/```json|```/g,'').trim()); }catch(e){ suggestions = []; }
+    renderProposals(suggestions);
+  }catch(e){
+    document.getElementById('proposeZone').innerHTML = '<div class="empty">Error al analizar.</div>';
+  }
+  setThinking(false);
+});
+function renderProposals(suggestions){
+  const zone = document.getElementById('proposeZone');
+  if(!suggestions.length){ zone.innerHTML = '<div class="empty">Sin sugerencias por ahora.</div>'; return; }
+  zone.innerHTML = suggestions.map((s,i)=>{
+    const task = STATE.tasks.find(t=>t.id===s.taskId);
+    return `<div class="propose-card">
+      <div style="font-size:13px; font-weight:700; color:var(--amber);">${task? task.title : 'Sugerencia general'}</div>
+      <div style="font-size:13px; margin:4px 0;">${s.suggestion||''}</div>
+      <div style="font-size:11px; color:var(--text-dim);">Motivo: ${s.reason||''}</div>
+      ${s.action==='delete' && task ? `<div style="margin-top:8px; display:flex; gap:8px;"><button class="btn small green" onclick="acceptDelete('${task.id}', this)">Aceptar y eliminar</button><button class="btn small ghost" onclick="this.closest('.propose-card').remove()">Rechazar</button></div>`
+      : `<div style="margin-top:8px;"><button class="btn small ghost" onclick="this.closest('.propose-card').remove()">Descartar</button></div>`}
+    </div>`;
+  }).join('');
+}
+window.acceptDelete = async function(taskId, btn){
+  STATE.tasks = STATE.tasks.filter(t=>t.id!==taskId);
+  await saveTasks();
+  btn.closest('.propose-card').remove();
+  renderTasks(); renderCalendar(); renderDashboard();
+};
+
+/* ================= SETTINGS ================= */
+document.getElementById('resetData').addEventListener('click', async ()=>{
+  openModal(`
+    <h3 style="margin-bottom:14px;">¿Borrar todos los datos?</h3>
+    <p style="font-size:13px; color:var(--text-dim); margin-bottom:16px;">Esta acción no se puede deshacer.</p>
+    <div style="display:flex; gap:8px;">
+      <button class="btn red" id="confirmReset">Sí, borrar todo</button>
+      <button class="btn ghost" onclick="closeModal()">Cancelar</button>
+    </div>
+  `);
+  document.getElementById('confirmReset').onclick = async ()=>{
+    for(const k of ['settings-name','settings-autopilot','subjects','tasks','streak-log','ai-chat-log']){
+      try{ await window.storage.delete(k); }catch(e){}
+    }
+    closeModal();
+    location.reload();
+  };
+});
+document.getElementById('settingsName').addEventListener('change', async e=>{
+  STATE.name = e.target.value || 'Sae';
+  await sSet('settings-name', STATE.name);
+  renderDashboard();
+});
+
+/* ================= INITIALIZATION ================= */
+async function init(){
+  await loadState();
+  if(document.getElementById('settingsName')) document.getElementById('settingsName').value = STATE.name;
+  
+  // Renderizadores Base
+  renderDashboard();
+  renderCalendar();
+  renderSubjects();
+  renderTasks();
+  renderStats();
+  renderChat();
+  renderUniverseFull();
+  await loadFavorites();
+  renderLabConstants();
+  renderFormulas();
+  populateConverter();
+  
+  // Ejecuta la animación de arranque táctico en la terminal
+  launchBootSequence();
+}
+init();
+</script>
+</body>
+</html>
