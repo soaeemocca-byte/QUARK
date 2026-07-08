@@ -538,3 +538,70 @@ document.getElementById('autopilotToggle').addEventListener('click', async ()=>{
   renderDashboard();
 });
      
+/* ================= SUBJECTS ================= */
+function renderSubjects(){
+  const grid = document.getElementById('subjectsGrid');
+  if(!STATE.subjects.length){ grid.innerHTML = '<div class="empty">Sin materias todavía.</div>'; return; }
+  grid.innerHTML = STATE.subjects.map(s=>{
+    const pending = STATE.tasks.filter(t=>t.subject===s.name && !t.done).length;
+    return `<div class="subj-card">
+      <div class="subj-top">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="width:10px;height:10px;border-radius:50%;background:${s.color};box-shadow:0 0 8px ${s.color};display:inline-block;"></span>
+          <span class="subj-name">${s.name}</span>
+        </div>
+        <button class="btn ghost small" onclick="editSubject('${s.id}')">✎</button>
+      </div>
+      <div class="bar-track"><div class="bar-fill" style="width:${s.progress||0}%; background:${s.color};"></div></div>
+      <div class="subj-detail">
+        <div>Prof: ${s.professor||'--'}</div>
+        <div>Horario: ${s.horario||'--'}</div>
+        <div>Promedio: ${s.promedio||'--'}</div>
+        <div>Pendientes: ${pending}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+window.editSubject = function(id){
+  const s = STATE.subjects.find(x=>x.id===id);
+  openModal(`
+    <h3 style="margin-bottom:14px;">${s.name}</h3>
+    <label>Profesor/a</label><input id="mProf" value="${s.professor||''}" style="margin-bottom:10px;">
+    <label>Horario</label><input id="mHor" value="${s.horario||''}" style="margin-bottom:10px;">
+    <label>Promedio</label><input id="mProm" value="${s.promedio||''}" style="margin-bottom:10px;">
+    <label>Avance (%)</label><input id="mProg" type="number" min="0" max="100" value="${s.progress||0}" style="margin-bottom:16px;">
+    <div style="display:flex; gap:8px;">
+      <button class="btn" id="mSave">Guardar</button>
+      <button class="btn red" id="mDelete">Eliminar materia</button>
+      <button class="btn ghost" onclick="closeModal()">Cancelar</button>
+    </div>
+  `);
+  document.getElementById('mSave').onclick = async ()=>{
+    s.professor=document.getElementById('mProf').value;
+    s.horario=document.getElementById('mHor').value;
+    s.promedio=document.getElementById('mProm').value;
+    s.progress=Number(document.getElementById('mProg').value)||0;
+    await saveSubjects(); closeModal(); renderSubjects(); renderDashboard();
+  };
+  document.getElementById('mDelete').onclick = async ()=>{
+    STATE.subjects = STATE.subjects.filter(x=>x.id!==id);
+    await saveSubjects(); closeModal(); renderSubjects(); renderDashboard();
+  };
+};
+document.getElementById('addSubjectBtn').addEventListener('click', ()=>{
+  openModal(`
+    <h3 style="margin-bottom:14px;">Nueva materia</h3>
+    <label>Nombre</label><input id="nName" style="margin-bottom:10px;">
+    <label>Color</label><input id="nColor" type="color" value="#4df3ff" style="margin-bottom:16px; height:38px;">
+    <div style="display:flex; gap:8px;">
+      <button class="btn" id="nSave">Crear</button>
+      <button class="btn ghost" onclick="closeModal()">Cancelar</button>
+    </div>
+  `);
+  document.getElementById('nSave').onclick = async ()=>{
+    const name = document.getElementById('nName').value.trim();
+    if(!name) return;
+    STATE.subjects.push({id:uid(), name, color:document.getElementById('nColor').value, professor:'', horario:'', promedio:'', progress:0});
+    await saveSubjects(); closeModal(); renderSubjects();
+  };
+});
