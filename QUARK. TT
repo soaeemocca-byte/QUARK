@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QUARK // Sistema Operativo Académico y Científico</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#040011">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+<style>
+/* ==========================================================================
+   1. VARIABLES DEL SISTEMA (PALETA CRÍPTICA Y NÚCLEO)
+   ========================================================================== */
+:root {
+  --space-black: #040011;
+  --bg-deep: #02000a;
+  --panel-alpha: rgba(11, 8, 28, 0.6);
+  --panel-solid: #0b081c;
+  --border-line: rgba(60, 184, 255, 0.15);
+  
+  /* Colores Tácticos */
+  --hazard-red: #BA0101;
+  --warning-amber: #E99D25;
+  --system-green: #ADD794;
+  --electric-blue: #3CB8FF;
+  --neon-violet: #9B5FFF;
+  --cyan-glow: #4FFFF2;
+  
+  /* Fuentes */
+  --font-title: 'Orbitron', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  --font-data: 'JetBrains Mono', monospace;
+  
+  --radius: 12px;
+  --transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ==========================================================================
+   2. MUTACIÓN ESTÉTICA: MODO CIENTÍFICO (FILTROS Y CRT)
+   ========================================================================== */
+body.scientific-mode {
+  --panel-alpha: rgba(5, 10, 20, 0.85);
+  --border-line: rgba(79, 255, 242, 0.25);
+  text-shadow: 0 0 4px rgba(79, 255, 242, 0.4);
+}
+
+/* Efecto de líneas de escaneo analógicas CRT */
+body.scientific-mode::before {
+  content: " ";
+  display: block;
+  position: fixed;
+  top: 0; left: 0; bottom: 0; right: 0;
+  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+  z-index: 9999;
+  background-size: 100% 3px, 6px 100%;
+  pointer-events: none;
+}
+
+/* Aberración cromática y flicker leve en Modo Científico */
+body.scientific-mode .card {
+  animation: qrkFlicker 0.15s infinite secondary;
+  box-shadow: 0 0 15px rgba(79, 255, 242, 0.05);
+  border-radius: 0px; /* Bordes angulares tipo instrumentación */
+}
+
+@keyframes qrkFlicker {
+  0% { opacity: 0.99; }
+  50% { opacity: 1; }
+  100% { opacity: 0.99; }
+}
+
+/* ==========================================================================
+   3. MAQUETACIÓN BASE (RESET & LAYOUT GENERAL)
+   ========================================================================== */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background-color: var(--space-black);
+  background-image: 
+    radial-gradient(at 10% 12%, rgba(155, 95, 255, 0.05) 0px, transparent 50%),
+    radial-gradient(at 95% 85%, rgba(60, 184, 255, 0.05) 0px, transparent 50%);
+  color: #dfe9f7;
+  font-family: var(--font-body);
+  min-height: 100vh;
+  display: flex;
+  overflow-x: hidden;
+}
+
+/* Contenedor Principal (Layout de Rejilla del Sistema Operativo) */
+.quark-os {
+  display: flex;
+  width: 100vw;
+  height: 100vh;
+  position: relative;
+}
+
+/* ==========================================================================
+   4. SIDEBAR TÁCTICA (BARRA NAVEGACIÓN MODULAR)
+   ========================================================================== */
+.sidebar {
+  width: 90px;
+  background: linear-gradient(180deg, var(--bg-deep) 0%, rgba(4,0,17,0.95) 100%);
+  border-right: 1px solid var(--border-line);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24px 0;
+  gap: 12px;
+  z-index: 100;
+}
+
+.sidebar-brand {
+  font-family: var(--font-title);
+  font-weight: 900;
+  font-size: 14px;
+  letter-spacing: 2px;
+  color: var(--cyan-glow);
+  text-shadow: 0 0 10px rgba(79, 255, 242, 0.5);
+  margin-bottom: 20px;
+}
+
+.nav-node {
+  width: 64px;
+  height: 64px;
+  border-radius: var(--radius);
+  border: 1px solid transparent;
+  background: transparent;
+  color: #7f93ab;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.nav-node span {
+  font-size: 9px;
+  font-family: var(--font-data);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.nav-node:hover {
+  color: var(--electric-blue);
+  background: rgba(60, 184, 255, 0.05);
+  border-color: rgba(60, 184, 255, 0.1);
+}
+
+.nav-node.active {
+  color: var(--cyan-glow);
+  background: rgba(79, 255, 242, 0.08);
+  border-color: rgba(79, 255, 242, 0.3);
+  box-shadow: 0 0 12px rgba(79, 255, 242, 0.1) inset;
+}
+
+/* Nodo específico de IA destaca cromáticamente */
+.nav-node[data-view="ai"].active {
+  color: var(--neon-violet);
+  background: rgba(155, 95, 255, 0.08);
+  border-color: rgba(155, 95, 255, 0.3);
+  box-shadow: 0 0 12px rgba(155, 95, 255, 0.1) inset;
+}
+
+/* ==========================================================================
+   5. CONTENEDOR DE PANELES (MAIN COMPONENT)
+   ========================================================================== */
+.viewport {
+  flex: 1;
+  height: 100vh;
+  overflow-y: auto;
+  padding: 32px;
+  position: relative;
+}
+
+.view-segment {
+  display: none;
+  animation: qrkSecBoot 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.view-segment.active {
+  display: block;
+}
+
+@keyframes qrkSecBoot {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Componente de Tarjetas Estilo HUD */
+.card {
+  background: var(--panel-alpha);
+  border: 1px solid var(--border-line);
+  border-radius: var(--radius);
+  padding: 24px;
+  backdrop-filter: blur(12px);
+  margin-bottom: 20px;
+  position: relative;
+}
+
+/* Decoraciones técnicas en las esquinas para el Modo Científico */
+body.scientific-mode .card::after {
+  content: "[SYS-LN]";
+  position: absolute;
+  bottom: 4px; right: 6px;
+  font-family: var(--font-data);
+  font-size: 8px;
+  color: rgba(79, 255, 242, 0.3);
+}
+
+/* Títulos de sección estilo terminal */
+.terminal-title {
+  font-family: var(--font-title);
+  font-size: 13px;
+  letter-spacing: 2px;
+  color: rgba(223, 233, 247, 0.5);
+  margin: 20px 0 12px;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.terminal-title::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border-line);
+}
+
+/* ==========================================================================
+   6. CONTROLES GENERALES (SWITCHES, BUTTONS)
+   ========================================================================== */
+.sci-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  background: rgba(255,255,255,0.03);
+  padding: 8px 16px;
+  border-radius: 20px;
+  border: 1px solid var(--border-line);
+  font-family: var(--font-data);
+  font-size: 12px;
+}
+
+.sci-switch input { display: none; }
+
+.sci-switch .slider {
+  width: 36px; height: 18px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 10px; position: relative;
+  transition: var(--transition);
+}
+
+.sci-switch .slider::before {
+  content: ""; position: absolute;
+  width: 12px; height: 12px;
+  left: 3px; top: 3px;
+  background: #7f93ab; border-radius: 50%;
+  transition: var(--transition);
+}
+
+.sci-switch input:checked + .slider { background: rgba(79, 255, 242, 0.3); }
+.sci-switch input:checked + .slider::before { transform: translateX(18px); background: var(--cyan-glow); }
+</style>
+</head>
+<body>
+
+<div class="quark-os">
+  <aside class="sidebar">
+    <div class="sidebar-brand">QRK</div>
+    
+    <nav style="display:flex; flex-direction:column; gap:8px; width:100%; align-items:center;">
+      <button class="nav-node active" data-view="control">🏠<span>Inicio</span></button>
+      <button class="nav-node" data-view="ai">🤖<span>IA</span></button>
+      <button class="nav-node" data-view="calendar">📅<span>Cal</span></button>
+      <button class="nav-node" data-view="academia">📚<span>Acad</span></button>
+      <button class="nav-node" data-view="lab">⚛<span>Lab</span></button>
+      <button class="nav-node" data-view="observatory">🌌<span>Obs</span></button>
+      <button class="nav-node" data-view="science-today">📰<span>Ciencia</span></button>
+      <button class="nav-node" data-view="stats">📊<span>Stats</span></button>
+      <button class="nav-node" data-view="settings">⚙<span>Config</span></button>
+    </nav>
+  </aside>
+
+  <main class="viewport">
+    
+    <header style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
+      <div>
+        <span style="font-family:var(--font-data); font-size:11px; color:var(--system-green);">● SYSTEM ONLINE</span>
+      </div>
+      <label class="sci-switch">
+        <span>🔬 MODO CIENTÍFICO</span>
+        <input type="checkbox" id="scientificModeTrigger">
+        <div class="slider"></div>
+      </label>
+    </header>
+
+    <div class="view-segment active" id="view-control">
+      <div class="card">
+        <h1 style="font-family:var(--font-title); font-size:24px; font-weight:900;">QUARK OS // INICIALIZANDO...</h1>
+        <p style="color:var(--electric-blue); font-family:var(--font-data); font-size:13px; margin-top:6px;">Bienvenido al Ecosistema Táctico.</p>
+      </div>
+    </div>
+
+    <div class="view-segment" id="view-ai">
+      <div class="terminal-title">Núcleo Cognitivo Integrado</div>
+      <div class="card">
+        <p style="font-family:var(--font-data); color:var(--neon-violet);">[AWAITING_SEQUENCE] En espera de parámetros...</p>
+      </div>
+    </div>
+
+    <div class="view-segment" id="view-calendar">
+      <div class="terminal-title">Cronología Operativa</div>
+      <div class="card"><p>Contenedor de Rejilla Temporal Orbital.</p></div>
+    </div>
+
+    <div class="view-segment" id="view-academia">
+      <div class="terminal-title">Módulo Académico Coordenado</div>
+      <div class="card"><p>Repositorio de asignaturas, apuntes indexados y descriptores de evaluación.</p></div>
+    </div>
+
+    <div class="view-segment" id="view-lab">
+      <div class="terminal-title">Entorno de Simulación e Instrumentación</div>
+      <div class="card"><p>Submódulos de Física, Química, Matemática, Ambiente y Energía.</p></div>
+    </div>
+
+    <div class="view-segment" id="view-observatory">
+      <div class="terminal-title">Cálculo Astronómico y Efemérides Orbitales</div>
+      <div class="card"><p>Monitoreo matemático local del Sistema Solar y satélites artificiales.</p></div>
+    </div>
+
+    <div class="view-segment" id="view-science-today">
+      <div class="terminal-title">Compresión de Datos de Divulgación Global</div>
+      <div class="card"><p>Hilos informativos procesados por la heurística de QUARK IA.</p></div>
+    </div>
+
+    <div class="view-segment" id="view-stats">
+      <div class="terminal-title">Analítica del Rendimiento de Estudio</div>
+      <div class="card"><p>Telemetría y gráficas de constancia académica.</p></div>
+    </div>
+
+    <div class="view-segment" id="view-settings">
+      <div class="terminal-title">Consola de Ajustes de Sistema</div>
+      <div class="card"><p>Control de perfiles de almacenamiento y variables de entorno.</p></div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+/* ==========================================================================
+   INTERRUPTOR GENERAL DE NAVEGACIÓN Y CONMUTACIÓN ESTÉTICA
+   ========================================================================== */
+document.querySelectorAll('.nav-node').forEach(node => {
+  node.addEventListener('click', () => {
+    document.querySelectorAll('.nav-node').forEach(n => n.classList.remove('active'));
+    document.querySelectorAll('.view-segment').forEach(v => v.classList.remove('active'));
+    
+    node.classList.add('active');
+    const viewId = 'view-' + node.dataset.view;
+    document.getElementById(viewId).classList.add('active');
+  });
+});
+
+// Manejador del Modo Científico (Modifica las propiedades CSS globales del DOM)
+const modeTrigger = document.getElementById('scientificModeTrigger');
+modeTrigger.addEventListener('change', () => {
+  if(modeTrigger.checked) {
+    document.body.classList.add('scientific-mode');
+  } else {
+    document.body.classList.remove('scientific-mode');
+  }
+});
+</script>
+</body>
+</html>
