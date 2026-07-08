@@ -368,4 +368,679 @@ label{font-size:11px; color:var(--text-dim); font-family:'Share Tech Mono'; lett
       <div class="grid3">
         <div class="card"><div class="mono-data" style="font-size:11px; color:var(--text-dim);">RACHA</div><div style="font-size:28px; font-weight:800; color:var(--cyan);" id="statStreak">0</div><div style="font-size:11px; color:var(--text-dim);">días seguidos</div></div>
         <div class="card"><div class="mono-data" style="font-size:11px; color:var(--text-dim);">COMPLETADAS</div><div style="font-size:28px; font-weight:800; color:var(--green);" id="statDonePct">0%</div><div style="font-size:11px; color:var(--text-dim);">del total</div></div>
-        <div class="card"><div class="mono-data" style="font-size:11px; color:var(--text-dim);">MATERIA TOP</div><div style="font-size:20px; font-weight:800; color:var(--violet);" id="statTopSubject">--</div><div 
+        <div class="card"><div class="mono-data" style="font-size:11px; color:var(--text-dim);">MATERIA TOP</div><div style="font-size:20px; font-weight:800; color:var(--violet);" id="statTopSubject">--</div><div>
+<div class="view" id="view-ai">
+      <div style="text-align:center; margin-bottom:8px;">
+        <div class="ai-core" id="aiCore"></div>
+        <div class="mono-data" style="font-size:11px; color:var(--text-dim);">QUARK IA</div>
+      </div>
+      <div class="card" style="margin-bottom:14px;">
+        <div class="chat-log" id="chatLog"></div>
+        <div style="display:flex; gap:8px; margin-top:10px;">
+          <input id="chatInput" placeholder="Preguntale algo a tu núcleo cognitivo...">
+          <button class="btn" id="chatSend">Enviar</button>
+        </div>
+      </div>
+      <div class="quick-row">
+        <button class="btn small ghost" id="qaExplain">📚 Explicame un concepto</button>
+        <button class="btn small ghost" id="qaSchedule">📅 Armar cronograma</button>
+        <button class="btn small violet" id="qaReorganize">🧠 Autopiloto IA: Sugerir Cambios</button>
+      </div>
+      <div id="proposeZone"></div>
+    </div>
+      
+    <div class="view" id="view-universe">
+      <div class="section-title">UNIVERSO HOY</div>
+      <div class="grid2">
+        <div class="card" style="text-align:center;">
+          <div class="moon-visual" id="moonVisual" style="width:96px; height:96px; margin:0 auto 12px;"><div class="moon-shadow" id="moonShadow"></div></div>
+          <div style="font-weight:700; font-size:16px;" id="moonName">--</div>
+          <div class="mono-data" style="color:var(--text-dim); font-size:13px;" id="moonPct">-- % iluminada</div>
+        </div>
+        <div class="card">
+          <div class="status-line">☀ <span id="sunrise">--:--</span> amanecer</div>
+          <div class="status-line">🌇 <span id="sunset">--:--</span> atardecer</div>
+          <div class="status-line mono-data" style="font-size:11px; margin-top:10px; color:var(--text-dim);" id="locLabel">Ubicación: --</div>
+        </div>
+      </div>
+      <div class="section-title">NOTA</div>
+      <div class="card" style="font-size:13px; color:var(--text-dim);">
+        La fase lunar y los horarios de sol se calculan matemáticamente en tu navegador (sin conexión a servicios externos), por eso son una muy buena aproximación. El planetario 3D, el tracking de la ISS y las posiciones planetarias en vivo quedan para una fase futura del proyecto — requieren APIs astronómicas dedicadas.
+      </div>
+    </div>
+
+    <div class="view" id="view-settings">
+      <div class="section-title">CONFIGURACIÓN</div>
+      <div class="card" style="display:flex; flex-direction:column; gap:16px;">
+        <div>
+          <label>Tu nombre</label>
+          <input id="settingsName" placeholder="Sae">
+        </div>
+        <div>
+          <button class="btn red" id="resetData">Borrar todos los datos</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div id="modalOverlay" style="display:none; position:fixed; inset:0; background:rgba(3,5,10,0.7); backdrop-filter:blur(4px); z-index:200; align-items:center; justify-content:center;">
+  <div class="card" id="modalBox" style="width:min(420px,90vw); max-height:85vh; overflow-y:auto;"></div>
+</div>
+
+<script>
+/* ================= STORAGE HELPERS ================= */
+async function sGet(key, fallback){
+  try{ const r = await window.storage.get(key); return r ? JSON.parse(r.value) : fallback; }
+  catch(e){ return fallback; }
+}
+async function sSet(key, value){
+  try{ await window.storage.set(key, JSON.stringify(value)); }catch(e){ console.error('storage error', e); }
+}
+function uid(){ return Math.random().toString(36).slice(2,10); }
+function todayISO(){ const d=new Date(); return d.toISOString().slice(0,10); }
+
+/* ================= STATE ================= */
+let STATE = {
+  name:'Sae',
+  autopilot:false,
+  subjects:[],
+  tasks:[],
+  streakLog:[],
+  chat:[]
+};
+let calCursor = new Date();
+let selectedDay = null;
+
+const SUBJECT_DEFAULTS = [
+  {name:'Física', color:'#4df3ff'},
+  {name:'Matemática', color:'#5dffb0'},
+  {name:'Campo Teórico de la Práctica', color:'#a37bff'},
+  {name:'Cultura Digital y Educación', color:'#ffc766'},
+  {name:'Introducción a los Sistemas Biológicos', color:'#ff6b7a'},
+];
+
+async function loadState(){
+  STATE.name = await sGet('settings-name', 'Sae');
+  STATE.autopilot = await sGet('settings-autopilot', false);
+  STATE.subjects = await sGet('subjects', SUBJECT_DEFAULTS.map(s=>({id:uid(), name:s.name, color:s.color, professor:'', horario:'', promedio:'', progress:0})));
+  STATE.tasks = await sGet('tasks', []);
+  STATE.streakLog = await sGet('streak-log', []);
+  STATE.chat = await sGet('ai-chat-log', []);
+}
+async function saveSubjects(){ await sSet('subjects', STATE.subjects); }
+async function saveTasks(){ await sSet('tasks', STATE.tasks); }
+async function saveStreak(){ await sSet('streak-log', STATE.streakLog); }
+async function saveChat(){ await sSet('ai-chat-log', STATE.chat.slice(-24)); }
+
+/* ================= NAVIGATION ================= */
+document.querySelectorAll('.nav-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('view-'+btn.dataset.view).classList.add('active');
+    if(btn.dataset.view==='stats') renderStats();
+    if(btn.dataset.view==='subjects') renderSubjects();
+    if(btn.dataset.view==='tasks') renderTasks();
+    if(btn.dataset.view==='calendar') renderCalendar();
+    if(btn.dataset.view==='lab') renderLabConstants();
+  });
+});
+
+/* ================= MODAL ================= */
+function openModal(html){
+  document.getElementById('modalBox').innerHTML = html;
+  document.getElementById('modalOverlay').style.display='flex';
+}
+function closeModal(){ document.getElementById('modalOverlay').style.display='none'; }
+document.getElementById('modalOverlay').addEventListener('click', e=>{ if(e.target.id==='modalOverlay') closeModal(); });
+
+/* ================= AUTOMATED TERMINAL BOOT SEQUENCE ================= */
+const bootSequences = [
+  { t: "INITIALIZING QUARK COGNITIVE CORE...", d: 150, c: "var(--cyan)" },
+  { t: "LOADING LOCAL ENVIROMENT PARAMETERS...", d: 450, c: "var(--text-dim)" },
+  { t: "↳ ASYNC INTERACTION DETECTED [STORAGE LAYER AVAILABLE]", d: 750, c: "var(--green)" },
+  { t: "INDEXING FIELD COMPILATIONS...", d: 1050, c: "var(--text-dim)" },
+  { t: "↳ PHYSICS & MATHEMATICS SUBSYSTEM CALIBRATED [OK]", d: 1350, c: "var(--violet)" },
+  { t: "FETCHING TELEMETRY DATA STRATEGIES...", d: 1650, c: "var(--amber)" },
+  { t: "SYSTEM ONLINE. TRANSMITTING MATRIX TO SAE...", d: 1950, c: "var(--green)" }
+];
+
+function launchBootSequence() {
+  const terminalLines = document.getElementById('bootTerminalLines');
+  const bootCard = document.getElementById('bootTerminalCard');
+  const actualDashboard = document.getElementById('dashboardActualContent');
+  
+  if(!terminalLines) return;
+  
+  terminalLines.innerHTML = "";
+  
+  bootSequences.forEach(line => {
+    setTimeout(() => {
+      const div = document.createElement('div');
+      div.style.color = line.c;
+      div.innerText = `> ${line.t}`;
+      terminalLines.appendChild(div);
+    }, line.d);
+  });
+
+  // Relevo de paneles: Se remueve la consola y emerge la interfaz real
+  setTimeout(() => {
+    bootCard.style.display = 'none';
+    actualDashboard.style.display = 'block';
+  }, 2300);
+}
+/* ================= DASHBOARD ================= */
+function greetingWord(){
+  const h = new Date().getHours();
+  if(h<12) return 'Buenos días';
+  if(h<19) return 'Buenas tardes';
+  return 'Buenas noches';
+}
+function renderDashboard(){
+  document.getElementById('greeting').textContent = `${greetingWord()}, ${STATE.name}.`;
+  document.getElementById('todayLong').textContent = new Date().toLocaleDateString('es-AR',{weekday:'long', day:'numeric', month:'long', year:'numeric'});
+
+  const pending = STATE.tasks.filter(t=>!t.done);
+  document.getElementById('statTasks').textContent = `${pending.length} tarea${pending.length!==1?'s':''} pendiente${pending.length!==1?'s':''}`;
+  document.getElementById('dotTasks').className = 'dot ' + (pending.length>5?'red':pending.length>0?'amber':'');
+  document.getElementById('statSubjects').textContent = `${STATE.subjects.length} materia${STATE.subjects.length!==1?'s':''} activa${STATE.subjects.length!==1?'s':''}`;
+
+  const exams = STATE.tasks.filter(t=>t.isExam && !t.done && t.date).sort((a,b)=>a.date.localeCompare(b.date));
+  if(exams.length){
+    const days = Math.ceil((new Date(exams[0].date) - new Date(todayISO()))/86400000);
+    document.getElementById('statExam').textContent = `${exams[0].title} en ${days} día${days!==1?'s':''}`;
+    document.getElementById('dotExam').className = 'dot ' + (days<=3?'red':'amber');
+  } else {
+    document.getElementById('statExam').textContent = 'Sin exámenes cargados';
+  }
+
+  // recommendation
+  let rec = 'Todo tranquilo. Buen momento para adelantar algo de lectura.';
+  if(exams.length && Math.ceil((new Date(exams[0].date)-new Date(todayISO()))/86400000) <= 5){
+    rec = `Repasar para "${exams[0].title}" — quedan pocos días.`;
+  } else if(pending.length>0){
+    const bySubj={};
+    pending.forEach(t=>{bySubj[t.subject]=(bySubj[t.subject]||0)+1;});
+    const top = Object.entries(bySubj).sort((a,b)=>b[1]-a[1])[0];
+    if(top) rec = `Tenés ${top[1]} tarea(s) de ${top[0]} pendientes. Es un buen bloque para hoy.`;
+  }
+  document.getElementById('recommendText').textContent = rec;
+
+  // autopilot toggle visual
+  const t = document.getElementById('autopilotToggle');
+  if(t) {
+    t.classList.toggle('on', STATE.autopilot);
+    document.getElementById('autopilotLabel').textContent = STATE.autopilot ? '🟢 Autopiloto activado' : '🔴 Autopiloto desactivado';
+  }
+
+  renderUniverseMini();
+}
+
+// Event listener safely assigned after DOM Check
+document.getElementById('autopilotToggle').addEventListener('click', async ()=>{
+  STATE.autopilot = !STATE.autopilot;
+  await sSet('settings-autopilot', STATE.autopilot);
+  renderDashboard();
+});
+     
+/* ================= SUBJECTS ================= */
+function renderSubjects(){
+  const grid = document.getElementById('subjectsGrid');
+  if(!STATE.subjects.length){ grid.innerHTML = '<div class="empty">Sin materias todavía.</div>'; return; }
+  grid.innerHTML = STATE.subjects.map(s=>{
+    const pending = STATE.tasks.filter(t=>t.subject===s.name && !t.done).length;
+    return `<div class="subj-card">
+      <div class="subj-top">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="width:10px;height:10px;border-radius:50%;background:${s.color};box-shadow:0 0 8px ${s.color};display:inline-block;"></span>
+          <span class="subj-name">${s.name}</span>
+        </div>
+        <button class="btn ghost small" onclick="editSubject('${s.id}')">✎</button>
+      </div>
+      <div class="bar-track"><div class="bar-fill" style="width:${s.progress||0}%; background:${s.color};"></div></div>
+      <div class="subj-detail">
+        <div>Prof: ${s.professor||'--'}</div>
+        <div>Horario: ${s.horario||'--'}</div>
+        <div>Promedio: ${s.promedio||'--'}</div>
+        <div>Pendientes: ${pending}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+window.editSubject = function(id){
+  const s = STATE.subjects.find(x=>x.id===id);
+  openModal(`
+    <h3 style="margin-bottom:14px;">${s.name}</h3>
+    <label>Profesor/a</label><input id="mProf" value="${s.professor||''}" style="margin-bottom:10px;">
+    <label>Horario</label><input id="mHor" value="${s.horario||''}" style="margin-bottom:10px;">
+    <label>Promedio</label><input id="mProm" value="${s.promedio||''}" style="margin-bottom:10px;">
+    <label>Avance (%)</label><input id="mProg" type="number" min="0" max="100" value="${s.progress||0}" style="margin-bottom:16px;">
+    <div style="display:flex; gap:8px;">
+      <button class="btn" id="mSave">Guardar</button>
+      <button class="btn red" id="mDelete">Eliminar materia</button>
+      <button class="btn ghost" onclick="closeModal()">Cancelar</button>
+    </div>
+  `);
+  document.getElementById('mSave').onclick = async ()=>{
+    s.professor=document.getElementById('mProf').value;
+    s.horario=document.getElementById('mHor').value;
+    s.promedio=document.getElementById('mProm').value;
+    s.progress=Number(document.getElementById('mProg').value)||0;
+    await saveSubjects(); closeModal(); renderSubjects(); renderDashboard();
+  };
+  document.getElementById('mDelete').onclick = async ()=>{
+    STATE.subjects = STATE.subjects.filter(x=>x.id!==id);
+    await saveSubjects(); closeModal(); renderSubjects(); renderDashboard();
+  };
+};
+document.getElementById('addSubjectBtn').addEventListener('click', ()=>{
+  openModal(`
+    <h3 style="margin-bottom:14px;">Nueva materia</h3>
+    <label>Nombre</label><input id="nName" style="margin-bottom:10px;">
+    <label>Color</label><input id="nColor" type="color" value="#4df3ff" style="margin-bottom:16px; height:38px;">
+    <div style="display:flex; gap:8px;">
+      <button class="btn" id="nSave">Crear</button>
+      <button class="btn ghost" onclick="closeModal()">Cancelar</button>
+    </div>
+  `);
+  document.getElementById('nSave').onclick = async ()=>{
+    const name = document.getElementById('nName').value.trim();
+    if(!name) return;
+    STATE.subjects.push({id:uid(), name, color:document.getElementById('nColor').value, professor:'', horario:'', promedio:'', progress:0});
+    await saveSubjects(); closeModal(); renderSubjects();
+  };
+});
+
+/* ================= TASKS ================= */
+function taskModal(existing, prefillDate){
+  const opts = STATE.subjects.map(s=>`<option value="${s.name}" ${existing&&existing.subject===s.name?'selected':''}>${s.name}</option>`).join('');
+  openModal(`
+    <h3 style="margin-bottom:14px;">${existing?'Editar tarea':'Nueva tarea'}</h3>
+    <label>Título</label><input id="tTitle" value="${existing?existing.title:''}" style="margin-bottom:10px;">
+    <label>Materia</label><select id="tSubj" style="margin-bottom:10px;">${opts}</select>
+    <label>Fecha</label><input id="tDate" type="date" value="${existing?existing.date:(prefillDate||todayISO())}" style="margin-bottom:10px;">
+    <label>Prioridad</label>
+    <select id="tPrio" style="margin-bottom:10px;">
+      <option value="low" ${existing&&existing.priority==='low'?'selected':''}>Baja</option>
+      <option value="medium" ${!existing||existing.priority==='medium'?'selected':''}>Media</option>
+      <option value="high" ${existing&&existing.priority==='high'?'selected':''}>Alta</option>
+    </select>
+    <label style="display:flex; align-items:center; gap:8px; margin-bottom:10px;"><input type="checkbox" id="tExam" style="width:auto;" ${existing&&existing.isExam?'checked':''}> Es examen/parcial</label>
+    <label>Notas</label><textarea id="tNotes" rows="2" style="margin-bottom:16px;">${existing?(existing.notes||''):''}</textarea>
+    <div style="display:flex; gap:8px;">
+      <button class="btn" id="tSave">Guardar</button>
+      ${existing?'<button class="btn red" id="tDelete">Eliminar</button>':''}
+      <button class="btn ghost" onclick="closeModal()">Cancelar</button>
+    </div>
+  `);
+  document.getElementById('tSave').onclick = async ()=>{
+    const title = document.getElementById('tTitle').value.trim();
+    if(!title) return;
+    const data = {
+      title, subject:document.getElementById('tSubj').value, date:document.getElementById('tDate').value,
+      priority:document.getElementById('tPrio').value, isExam:document.getElementById('tExam').checked,
+      notes:document.getElementById('tNotes').value
+    };
+    if(existing){ Object.assign(existing, data); }
+    else { STATE.tasks.push({id:uid(), done:false, ...data}); }
+    await saveTasks(); closeModal(); renderTasks(); renderCalendar(); renderDashboard();
+  };
+  if(existing){
+    document.getElementById('tDelete').onclick = async ()=>{
+      STATE.tasks = STATE.tasks.filter(t=>t.id!==existing.id);
+      await saveTasks(); closeModal(); renderTasks(); renderCalendar(); renderDashboard();
+    };
+  }
+}
+document.getElementById('addTaskBtn').addEventListener('click', ()=>taskModal(null));
+document.getElementById('taskFilter').addEventListener('change', renderTasks);
+
+function subjColor(name){ const s = STATE.subjects.find(x=>x.name===name); return s?s.color:'#7f93ab'; }
+
+async function toggleTask(id){
+  const t = STATE.tasks.find(x=>x.id===id);
+  t.done = !t.done;
+  if(t.done){
+    const d = todayISO();
+    if(!STATE.streakLog.includes(d)) STATE.streakLog.push(d);
+    await saveStreak();
+  }
+  await saveTasks(); renderTasks(); renderCalendar(); renderDashboard(); renderStats();
+}
+window.toggleTask = toggleTask;
+window.editTask = (id)=>taskModal(STATE.tasks.find(t=>t.id===id));
+
+function renderTasks(){
+  const filter = document.getElementById('taskFilter').value;
+  let list = [...STATE.tasks].sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  if(filter==='pending') list = list.filter(t=>!t.done);
+  if(filter==='done') list = list.filter(t=>t.done);
+  const el = document.getElementById('tasksList');
+  if(!list.length){ el.innerHTML = '<div class="empty">No hay tareas para mostrar.</div>'; return; }
+  el.innerHTML = list.map(t=>`
+    <div class="task ${t.done?'done':''}">
+      <div class="check ${t.done?'on':''}" onclick="toggleTask('${t.id}')">${t.done?'✓':''}</div>
+      <div class="task-body" onclick="editTask('${t.id}')">
+        <div class="task-title">${t.isExam?'📖 ':''}${t.title}</div>
+        <div class="task-meta">
+          <span class="chip" style="background:${subjColor(t.subject)}22; color:${subjColor(t.subject)};">${t.subject||'—'}</span>
+          <span>${t.date||'sin fecha'}</span>
+          <span>${({low:'baja',medium:'media',high:'alta'})[t.priority]||''}</span>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}}
+
+/* ================= CALENDAR ================= */
+const DOW = ['LUN','MAR','MIÉ','JUE','VIE','SÁB','DOM'];
+function renderCalendar(){
+  const y = calCursor.getFullYear(), m = calCursor.getMonth();
+  document.getElementById('calMonthLabel').textContent = calCursor.toLocaleDateString('es-AR',{month:'long', year:'numeric'}).toUpperCase();
+  document.getElementById('calDow').innerHTML = DOW.map(d=>`<div class="cal-dow">${d}</div>`).join('');
+
+  const firstDay = new Date(y,m,1);
+  let startOffset = (firstDay.getDay()+6)%7;
+  const daysInMonth = new Date(y,m+1,0).getDate();
+  const daysPrevMonth = new Date(y,m,0).getDate();
+
+  let cells = [];
+  for(let i=startOffset;i>0;i--) cells.push({day:daysPrevMonth-i+1, other:true});
+  for(let d=1; d<=daysInMonth; d++) cells.push({day:d, other:false});
+  while(cells.length % 7 !== 0) cells.push({day:cells.length, other:true});
+
+  const todayStr = todayISO();
+  document.getElementById('calGrid').innerHTML = cells.map(c=>{
+    const dateStr = c.other? '' : `${y}-${String(m+1).padStart(2,'0')}-${String(c.day).padStart(2,'0')}`;
+    const dayTasks = c.other? [] : STATE.tasks.filter(t=>t.date===dateStr);
+    const dotsHtml = dayTasks.slice(0,4).map(t=>`<span style="background:${subjColor(t.subject)}"></span>`).join('');
+    return `<div class="cal-day ${c.other?'other':''} ${dateStr===todayStr?'today':''}" ${!c.other?`onclick="openDay('${dateStr}')"`:''}>
+      <div>${c.day}</div><div class="dots">${dotsHtml}</div>
+    </div>`;
+  }).join('');
+}
+document.getElementById('calPrev').addEventListener('click', ()=>{ calCursor.setMonth(calCursor.getMonth()-1); renderCalendar(); });
+document.getElementById('calNext').addEventListener('click', ()=>{ calCursor.setMonth(calCursor.getMonth()+1); renderCalendar(); });
+
+window.openDay = function(dateStr){
+  selectedDay = dateStr;
+  document.getElementById('dayPanel').style.display='block';
+  const d = new Date(dateStr+'T00:00:00');
+  document.getElementById('dayPanelTitle').textContent = d.toLocaleDateString('es-AR',{weekday:'long', day:'numeric', month:'long'}).toUpperCase();
+  const dayTasks = STATE.tasks.filter(t=>t.date===dateStr);
+  const el = document.getElementById('dayTasks');
+  el.innerHTML = dayTasks.length? dayTasks.map(t=>`
+    <div class="task ${t.done?'done':''}">
+      <div class="check ${t.done?'on':''}" onclick="toggleTask('${t.id}')">${t.done?'✓':''}</div>
+      <div class="task-body" onclick="editTask('${t.id}')">
+        <div class="task-title">${t.isExam?'📖 ':''}${t.title}</div>
+        <div class="task-meta"><span class="chip" style="background:${subjColor(t.subject)}22; color:${subjColor(t.subject)};">${t.subject}</span></div>
+      </div>
+    </div>`).join('') : '<div class="empty">Sin tareas este día.</div>';
+};
+document.getElementById('addTaskFromDay').addEventListener('click', ()=>{
+  if(selectedDay) taskModal(null, selectedDay);
+});
+
+/* ================= STATS ================= */
+function renderStats(){
+  let streak = 0;
+  let cursor = new Date();
+  while(true){
+    const iso = cursor.toISOString().slice(0,10);
+    if(STATE.streakLog.includes(iso)){ streak++; cursor.setDate(cursor.getDate()-1); }
+    else break;
+  }
+  document.getElementById('statStreak').textContent = streak;
+
+  const total = STATE.tasks.length, done = STATE.tasks.filter(t=>t.done).length;
+  document.getElementById('statDonePct').textContent = total? Math.round(done/total*100)+'%' : '0%';
+
+  const bySubj = {};
+  STATE.tasks.forEach(t=>{ bySubj[t.subject]=(bySubj[t.subject]||0)+1; });
+  const top = Object.entries(bySubj).sort((a,b)=>b[1]-a[1])[0];
+  document.getElementById('statTopSubject').textContent = top? top[0] : '--';
+
+  const maxCount = Math.max(1, ...Object.values(bySubj));
+  const barsEl = document.getElementById('subjectBars');
+  if(!Object.keys(bySubj).length){ barsEl.innerHTML = '<div class="empty">Sin datos todavía.</div>'; }
+  else{
+    barsEl.innerHTML = Object.entries(bySubj).map(([name,count])=>`
+      <div style="margin-bottom:12px;">
+        <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px;"><span>${name}</span><span class="mono-data">${count}</span></div>
+        <div class="bar-track"><div class="bar-fill" style="width:${count/maxCount*100}%; background:${subjColor(name)};"></div></div>
+      </div>`).join('');
+  }
+}/* ================= UNIVERSE: moon + sun ================= */
+function moonIllumination(date){
+  const ref = Date.UTC(2000,0,6,18,14,0);
+  const synodic = 29.530588853;
+  const days = (date.getTime() - ref) / 86400000;
+  let phase = (days % synodic) / synodic;
+  if(phase < 0) phase += 1;
+  const illum = (1 - Math.cos(2*Math.PI*phase)) / 2;
+  let name, emoji;
+  if(phase < 0.03 || phase > 0.97){name='Luna nueva'; emoji='🌑';}
+  else if(phase < 0.22){name='Luna creciente'; emoji='🌒';}
+  else if(phase < 0.28){name='Cuarto creciente'; emoji='🌓';}
+  else if(phase < 0.47){name='Gibosa creciente'; emoji='🌔';}
+  else if(phase < 0.53){name='Luna llena'; emoji='🌕';}
+  else if(phase < 0.72){name='Gibosa menguante'; emoji='🌖';}
+  else if(phase < 0.78){name='Cuarto menguante'; emoji='🌗';}
+  else {name='Luna menguante'; emoji='🌘';}
+  return {phase, illum, name, emoji};
+}
+function sunTimes(date, lat, lon){
+  const rad = Math.PI/180, deg = 180/Math.PI;
+  const start = Date.UTC(date.getFullYear(),0,1);
+  const N = Math.floor((Date.UTC(date.getFullYear(),date.getMonth(),date.getDate()) - start)/86400000) + 1;
+  const lngHour = lon/15;
+  function calc(isRise){
+    const t = N + ((isRise?6:18) - lngHour)/24;
+    const M = (0.9856*t) - 3.289;
+    let L = M + (1.916*Math.sin(M*rad)) + (0.020*Math.sin(2*M*rad)) + 282.634;
+    L = ((L%360)+360)%360;
+    let RA = deg*Math.atan(0.91764*Math.tan(L*rad));
+    RA = ((RA%360)+360)%360;
+    const Lq = Math.floor(L/90)*90; const RAq = Math.floor(RA/90)*90;
+    RA = RA + (Lq - RAq); RA = RA/15;
+    const sinDec = 0.39782*Math.sin(L*rad); const cosDec = Math.cos(Math.asin(sinDec));
+    const cosH = (Math.cos(90.833*rad) - (sinDec*Math.sin(lat*rad))) / (cosDec*Math.cos(lat*rad));
+    if(cosH>1 || cosH<-1) return null;
+    let H = isRise? 360-deg*Math.acos(cosH) : deg*Math.acos(cosH);
+    H = H/15;
+    const Tval = H + RA - (0.06571*t) - 6.622;
+    let UT = Tval - lngHour;
+    UT = ((UT%24)+24)%24;
+    return UT;
+  }
+  const riseUT = calc(true), setUT = calc(false);
+  function fmt(ut){
+    if(ut===null) return '--:--';
+    const localOffset = -date.getTimezoneOffset()/60;
+    let local = ut + localOffset;
+    local = ((local%24)+24)%24;
+    const h = Math.floor(local), min = Math.round((local-h)*60);
+    return `${String(h).padStart(2,'0')}:${String(min).padStart(2,'0')}`;
+  }
+  return {sunrise:fmt(riseUT), sunset:fmt(setUT)};
+}
+function paintMoon(el, illum, waning){
+  if(!el) return;
+  const pct = Math.round(illum*100);
+  const width = 100-pct;
+  el.style.width = width+'%';
+  el.style.left = waning? '0' : 'auto';
+  el.style.right = waning? 'auto' : '0';
+}
+let userLoc = {lat:-34.61, lon:-58.38, label:'Buenos Aires (aprox.)'};
+function renderUniverseMini(){
+  const m = moonIllumination(new Date());
+  document.getElementById('moonNameMini').textContent = m.emoji+' '+m.name;
+  document.getElementById('moonPctMini').textContent = Math.round(m.illum*100)+'% iluminada';
+  paintMoon(document.getElementById('moonShadowMini'), m.illum, m.phase>0.5);
+  const st = sunTimes(new Date(), userLoc.lat, userLoc.lon);
+  document.getElementById('sunTimesMini').textContent = `☀ ${st.sunrise} / 🌇 ${st.sunset}`;
+}
+function renderUniverseFull(){
+  const m = moonIllumination(new Date());
+  document.getElementById('moonName').textContent = m.emoji+' '+m.name;
+  document.getElementById('moonPct').textContent = Math.round(m.illum*100)+'% iluminada';
+  paintMoon(document.getElementById('moonShadow'), m.illum, m.phase>0.5);
+  const st = sunTimes(new Date(), userLoc.lat, userLoc.lon);
+  document.getElementById('sunrise').textContent = st.sunrise;
+  document.getElementById('sunset').textContent = st.sunset;
+  document.getElementById('locLabel').textContent = 'Ubicación: '+userLoc.label;
+}
+if(navigator.geolocation){
+  navigator.geolocation.getCurrentPosition(pos=>{
+    userLoc = {lat:pos.coords.latitude, lon:pos.coords.longitude, label:'tu ubicación actual'};
+    renderUniverseMini(); renderUniverseFull();
+  }, ()=>{ }, {timeout:4000});
+}
+
+/* ================= LABORATORIO: FÍSICA ================= */
+const CONSTANTS = [
+  {name:'Velocidad de la luz', sym:'c', val:'2.998 × 10⁸', unit:'m/s'},
+  {name:'Constante de gravitación universal', sym:'G', val:'6.674 × 10⁻¹¹', unit:'N·m²/kg²'},
+  {name:'Constante de Planck', sym:'h', val:'6.626 × 10⁻³⁴', unit:'J·s'},
+  {name:'Constante de Boltzmann', sym:'k', val:'1.381 × 10⁻²³', unit:'J/K'},
+  {name:'Carga elemental', sym:'e', val:'1.602 × 10⁻¹⁹', unit:'C'},
+  {name:'Masa del electrón', sym:'mₑ', val:'9.109 × 10⁻³¹', unit:'kg'},
+  {name:'Masa del protón', sym:'mₚ', val:'1.673 × 10⁻²⁷', unit:'kg'},
+  {name:'Número de Avogadro', sym:'Nₐ', val:'6.022 × 10²³', unit:'mol⁻¹'},
+  {name:'Constante de los gases', sym:'R', val:'8.314', unit:'J/(mol·K)'},
+  {name:'Aceleración de la gravedad (Tierra)', sym:'g', val:'9.81', unit:'m/s²'},
+  {name:'Permitividad del vacío', sym:'ε₀', val:'8.854 × 10⁻¹²', unit:'F/m'},
+  {name:'Permeabilidad del vacío', sym:'μ₀', val:'1.257 × 10⁻⁶', unit:'N/A²'},
+];
+function renderLabConstants(){
+  const q = (document.getElementById('constSearch').value||'').toLowerCase();
+  const list = CONSTANTS.filter(c => c.name.toLowerCase().includes(q) || c.sym.toLowerCase().includes(q));
+  document.getElementById('constList').innerHTML = list.length ? list.map(c=>`
+    <div class="const-row">
+      <div><span class="const-name">${c.name}</span><span class="const-sym">${c.sym}</span></div>
+      <div class="const-val">${c.val} ${c.unit}</div>
+    </div>`).join('') : '<div class="empty">Sin resultados.</div>';
+}
+document.getElementById('constSearch').addEventListener('input', renderLabConstants);
+
+const FORMULAS = {
+  'Cinemática':[
+    {id:'k1', expr:'v = v₀ + a·t', desc:'Velocidad en MRUV'},
+    {id:'k2', expr:'x = x₀ + v₀·t + ½·a·t²', desc:'Posición en MRUV'},
+    {id:'k3', expr:'v² = v₀² + 2·a·Δx', desc:'Relación velocidad-desplazamiento'},
+    {id:'k4', expr:'x = x₀ + v·t', desc:'Posición en MRU'},
+  ],
+  'Dinámica':[
+    {id:'d1', expr:'F = m·a', desc:'Segunda ley de Newton'},
+    {id:'d2', expr:'p = m·v', desc:'Cantidad de movimiento (momento lineal)'},
+    {id:'d3', expr:'Fr = μ·N', desc:'Fuerza de rozamiento'},
+    {id:'d4', expr:'F = G·m₁·m₂/r²', desc:'Ley de gravitación universal'},
+  ],
+  'Trabajo y energía':[
+    {id:'e1', expr:'W = F·d·cos θ', desc:'Trabajo mecánico'},
+    {id:'e2', expr:'Ec = ½·m·v²', desc:'Energía cinética'},
+    {id:'e3', expr:'Ep = m·g·h', desc:'Energía potencial gravitatoria'},
+    {id:'e4', expr:'P = W/t', desc:'Potencia'},
+  ],
+  'Electricidad':[
+    {id:'el1', expr:'V = I·R', desc:'Ley de Ohm'},
+    {id:'el2', expr:'P = V·I', desc:'Potencia eléctrica'},
+    {id:'el3', expr:'F = k·q₁·q₂/r²', desc:'Ley de Coulomb'},
+    {id:'el4', expr:'C = Q/V', desc:'Capacitancia'},
+  ],
+  'Ondas y termodinámica':[
+    {id:'o1', expr:'v = λ·f', desc:'Velocidad de propagación de una onda'},
+    {id:'o2', expr:'Q = m·c·ΔT', desc:'Calor sensible'},
+    {id:'o3', expr:'PV = nRT', desc:'Ecuación de estado del gas ideal'},
+  ],
+};
+let favorites = [];
+let showOnlyFav = false;
+async function loadFavorites(){ favorites = await sGet('lab-favorites', []); }
+function renderFormulas(){
+  const el = document.getElementById('formulasList');
+  let html = '';
+  Object.entries(FORMULAS).forEach(([topic, items])=>{
+    const filtered = showOnlyFav ? items.filter(f=>favorites.includes(f.id)) : items;
+    if(!filtered.length) return;
+    html += `<div class="formula-group"><h4>${topic}</h4>` + filtered.map(f=>`
+      <div class="formula-card">
+        <div>
+          <div class="formula-expr">${f.expr}</div>
+          <div class="formula-desc">${f.desc}</div>
+        </div>
+        <button class="star-btn ${favorites.includes(f.id)?'on':''}" onclick="toggleFav('${f.id}')">★</button>
+      </div>`).join('') + `</div>`;
+  });
+  el.innerHTML = html || '<div class="empty">Sin favoritas todavía. Tocá la estrella de una fórmula para guardarla.</div>';
+}
+window.toggleFav = async function(id){
+  if(favorites.includes(id)) favorites = favorites.filter(x=>x!==id);
+  else favorites.push(id);
+  await sSet('lab-favorites', favorites);
+  renderFormulas();
+};
+document.getElementById('favFilterBtn').addEventListener('click', ()=>{
+  showOnlyFav = !showOnlyFav;
+  document.getElementById('favFilterBtn').textContent = showOnlyFav ? '⭐ Ver todas' : '⭐ Ver solo favoritas';
+  renderFormulas();
+});
+
+/* Unit converter */
+const UNIT_CATEGORIES = {
+  'Longitud': {base:'m', units:{'m':1, 'km':1000, 'cm':0.01, 'mm':0.001, 'mi':1609.34, 'ft':0.3048, 'in':0.0254}},
+  'Masa': {base:'kg', units:{'kg':1, 'g':0.001, 'mg':0.000001, 'ton':1000, 'lb':0.453592}},
+  'Tiempo': {base:'s', units:{'s':1, 'min':60, 'h':3600, 'día':86400}},
+  'Velocidad': {base:'m/s', units:{'m/s':1, 'km/h':0.277778, 'mi/h':0.44704}},
+  'Fuerza': {base:'N', units:{'N':1, 'kN':1000, 'dyn':0.00001, 'kgf':9.80665}},
+  'Energía': {base:'J', units:{'J':1, 'kJ':1000, 'cal':4.184, 'kcal':4184, 'eV':1.602e-19}},
+  'Presión': {base:'Pa', units:{'Pa':1, 'kPa':1000, 'atm':101325, 'bar':100000, 'mmHg':133.322}},
+};
+function populateConverter(){
+  const catSel = document.getElementById('convCategory');
+  catSel.innerHTML = Object.keys(UNIT_CATEGORIES).map(c=>`<option>${c}</option>`).join('') + '<option>Temperatura</option>';
+  updateConvUnits();
+}
+function updateConvUnits(){
+  const cat = document.getElementById('convCategory').value;
+  const fromSel = document.getElementById('convFrom'), toSel = document.getElementById('convTo');
+  let units;
+  if(cat==='Temperatura'){ units = ['°C','°F','K']; }
+  else{ units = Object.keys(UNIT_CATEGORIES[cat].units); }
+  fromSel.innerHTML = units.map(u=>`<option>${u}</option>`).join('');
+  toSel.innerHTML = units.map((u,i)=>`<option ${i===1?'selected':''}>${u}</option>`).join('');
+  computeConversion();
+}
+function tempToC(v,u){ if(u==='°C') return v; if(u==='°F') return (v-32)*5/9; if(u==='K') return v-273.15; }
+function cToTemp(c,u){ if(u==='°C') return c; if(u==='°F') return c*9/5+32; if(u==='K') return c+273.15; }
+function computeConversion(){
+  const cat = document.getElementById('convCategory').value;
+  const val = parseFloat(document.getElementById('convValue').value);
+  const from = document.getElementById('convFrom').value, to = document.getElementById('convTo').value;
+  const out = document.getElementById('convResult');
+  if(isNaN(val)){ out.textContent = '--'; return; }
+  let result;
+  if(cat==='Temperatura'){ result = cToTemp(tempToC(val, from), to); }
+  else{
+    const u = UNIT_CATEGORIES[cat].units;
+    const base = val * u[from];
+    result = base / u[to];
+  }
+  out.textContent = `${val} ${from} = ${Number(result.toPrecision(6))} ${to}`;
+}
+['convCategory'].forEach(id=>document.getElementById(id).addEventListener('change', updateConvUnits));
+['convFrom','convTo','convValue'].forEach(id=>document.getElementById(id).addEventListener('input', computeConversion));
+
+document.querySelectorAll('.lab-tab').forEach(tab=>{
+  tab.addEventListener('click', ()=>{
+    document.querySelectorAll('.lab-tab').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('.lab-panel').forEach(p=>p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('lab-'+tab.dataset.lab).classList.add('active');
+  });
+});
