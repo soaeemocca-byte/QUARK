@@ -1,0 +1,2465 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QUARK // Centro de Control Académico</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#040011">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800&family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#060a10;
+  --bg-deep:#03050a;
+  --panel:rgba(18,26,38,0.55);
+  --panel-solid:#0d1420;
+  --line:rgba(120,200,255,0.12);
+  --cyan:#4df3ff;
+  --violet:#a37bff;
+  --green:#5dffb0;
+  --amber:#ffc766;
+  --red:#ff6b7a;
+  --text:#dfe9f7;
+  --text-dim:#7f93ab;
+  --radius:14px;
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+body{
+  background:
+    radial-gradient(ellipse at 20% -10%, rgba(77,243,255,0.08), transparent 50%),
+    radial-gradient(ellipse at 90% 10%, rgba(163,123,255,0.08), transparent 45%),
+    var(--bg-deep);
+  color:var(--text);
+  font-family:'Rajdhani', sans-serif;
+  min-height:100vh;
+  overflow-x:hidden;
+}
+.scanlines{
+  position:fixed; inset:0; pointer-events:none; z-index:999;
+  background:repeating-linear-gradient(180deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1px, transparent 1px, transparent 3px);
+  mix-blend-mode:overlay;
+}
+h1,h2,h3,.mono{font-family:'Orbitron', sans-serif;}
+.mono-data{font-family:'Share Tech Mono', monospace;}
+
+/* ---------- Layout ---------- */
+.app{display:flex; min-height:100vh;}
+.sidebar{
+  width:76px; flex-shrink:0;
+  background:linear-gradient(180deg, rgba(10,15,24,0.9), rgba(6,10,16,0.9));
+  border-right:1px solid var(--line);
+  display:flex; flex-direction:column; align-items:center;
+  padding:20px 0; gap:6px; position:sticky; top:0; height:100vh;
+}
+.brand{
+  font-family:'Orbitron'; font-weight:800; font-size:13px; letter-spacing:3px;
+  color:var(--cyan); margin-bottom:24px; writing-mode:vertical-rl; text-orientation:mixed;
+  text-shadow:0 0 12px rgba(77,243,255,0.6);
+}
+.nav-btn{
+  width:52px; height:52px; border-radius:12px; border:1px solid transparent;
+  background:transparent; color:var(--text-dim); display:flex; flex-direction:column;
+  align-items:center; justify-content:center; gap:2px; cursor:pointer; font-size:20px;
+  transition:all .2s ease;
+}
+.nav-btn span{font-size:8px; font-family:'Share Tech Mono'; letter-spacing:.5px;}
+.nav-btn:hover{background:rgba(77,243,255,0.08); color:var(--cyan);}
+.nav-btn.active{
+  background:rgba(77,243,255,0.12); color:var(--cyan);
+  border-color:rgba(77,243,255,0.35); box-shadow:0 0 16px rgba(77,243,255,0.15) inset;
+}
+.main{flex:1; padding:28px 32px 80px; max-width:1100px; margin:0 auto; width:100%;}
+.view{display:none; animation:fadeIn .35s ease;}
+.view.active{display:block;}
+@keyframes fadeIn{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+/* ---------- Cards ---------- */
+.card{
+  background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+  padding:20px; backdrop-filter:blur(10px); position:relative; overflow:hidden;
+}
+.card::before{
+  content:''; position:absolute; top:0; left:0; right:0; height:1px;
+  background:linear-gradient(90deg, transparent, rgba(77,243,255,0.5), transparent);
+}
+.grid2{display:grid; grid-template-columns:1fr 1fr; gap:18px;}
+.grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:16px;}
+@media(max-width:800px){.grid2,.grid3{grid-template-columns:1fr;}}
+
+/* ---------- Header / boot ---------- */
+.boot{margin-bottom:22px;}
+.boot .tag{font-family:'Share Tech Mono'; font-size:11px; color:var(--green); letter-spacing:2px;}
+.boot h1{font-size:26px; letter-spacing:1px; margin:6px 0 2px; color:#fff;}
+.boot .sub{color:var(--text-dim); font-size:14px;}
+
+.status-line{display:flex; align-items:center; gap:8px; font-family:'Share Tech Mono'; font-size:13px; color:var(--text-dim); margin:3px 0;}
+.dot{width:7px; height:7px; border-radius:50%; background:var(--green); box-shadow:0 0 8px var(--green);}
+.dot.amber{background:var(--amber); box-shadow:0 0 8px var(--amber);}
+.dot.red{background:var(--red); box-shadow:0 0 8px var(--red);}
+
+.recommend{
+  margin-top:14px; padding:14px 16px; border-left:2px solid var(--violet);
+  background:rgba(163,123,255,0.06); border-radius:0 8px 8px 0; font-size:14px;
+}
+.recommend b{color:var(--violet);}
+
+/* ---------- Buttons / inputs ---------- */
+button{font-family:'Rajdhani'; font-weight:600; cursor:pointer;}
+.btn{
+  padding:9px 16px; border-radius:9px; border:1px solid var(--line);
+  background:rgba(77,243,255,0.08); color:var(--cyan); font-size:13px; letter-spacing:.5px;
+  transition:all .15s;
+}
+.btn:hover{background:rgba(77,243,255,0.18);}
+.btn.ghost{background:transparent; color:var(--text-dim);}
+.btn.violet{background:rgba(163,123,255,0.1); color:var(--violet); border-color:rgba(163,123,255,0.3);}
+.btn.violet:hover{background:rgba(163,123,255,0.2);}
+.btn.green{background:rgba(93,255,176,0.1); color:var(--green); border-color:rgba(93,255,176,0.3);}
+.btn.red{background:rgba(255,107,122,0.1); color:var(--red); border-color:rgba(255,107,122,0.3);}
+.btn.small{padding:5px 10px; font-size:11px;}
+input,select,textarea{
+  background:rgba(255,255,255,0.03); border:1px solid var(--line); color:var(--text);
+  border-radius:8px; padding:9px 11px; font-family:'Rajdhani'; font-size:14px; width:100%;
+}
+input:focus,select:focus,textarea:focus{outline:none; border-color:var(--cyan);}
+label{font-size:11px; color:var(--text-dim); font-family:'Share Tech Mono'; letter-spacing:.5px; display:block; margin-bottom:4px;}
+
+/* ---------- Progress bars ---------- */
+.bar-track{width:100%; height:8px; border-radius:6px; background:rgba(255,255,255,0.06); overflow:hidden;}
+.bar-fill{height:100%; border-radius:6px; transition:width .4s ease;}
+
+/* ---------- Section titles ---------- */
+.section-title{
+  font-size:12px; letter-spacing:2px; color:var(--text-dim); margin:26px 0 12px;
+  display:flex; align-items:center; gap:10px; text-transform:uppercase;
+}
+.section-title::after{content:''; flex:1; height:1px; background:var(--line);}
+
+/* ---------- Calendar ---------- */
+.cal-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;}
+.cal-grid{display:grid; grid-template-columns:repeat(7,1fr); gap:6px;}
+.cal-dow{text-align:center; font-size:10px; color:var(--text-dim); font-family:'Share Tech Mono'; padding-bottom:4px;}
+.cal-day{
+  aspect-ratio:1; border-radius:9px; border:1px solid var(--line); background:rgba(255,255,255,0.02);
+  display:flex; flex-direction:column; align-items:center; justify-content:center; cursor:pointer;
+  font-family:'Share Tech Mono'; font-size:13px; position:relative; transition:all .15s;
+}
+.cal-day:hover{border-color:var(--cyan); background:rgba(77,243,255,0.06);}
+.cal-day.other{opacity:.25;}
+.cal-day.today{border-color:var(--cyan); box-shadow:0 0 10px rgba(77,243,255,0.3) inset;}
+.cal-day .dots{display:flex; gap:2px; margin-top:3px;}
+.cal-day .dots span{width:4px; height:4px; border-radius:50%;}
+
+/* ---------- Tasks ---------- */
+.task{
+  display:flex; align-items:center; gap:12px; padding:12px 14px; border:1px solid var(--line);
+  border-radius:10px; margin-bottom:8px; background:rgba(255,255,255,0.015);
+}
+.task.done{opacity:.45;}
+.task.done .task-title{text-decoration:line-through;}
+.check{
+  width:20px; height:20px; border-radius:6px; border:1.5px solid var(--text-dim);
+  flex-shrink:0; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:12px;
+}
+.check.on{background:var(--green); border-color:var(--green); color:#04140c;}
+.task-body{flex:1; min-width:0;}
+.task-title{font-size:14px; font-weight:600;}
+.task-meta{font-size:11px; color:var(--text-dim); font-family:'Share Tech Mono'; margin-top:2px; display:flex; gap:8px; flex-wrap:wrap;}
+.chip{padding:2px 8px; border-radius:20px; font-size:10px; font-family:'Share Tech Mono'; letter-spacing:.5px;}
+
+/* ---------- Subjects ---------- */
+.subj-card{padding:16px; border-radius:12px; border:1px solid var(--line); background:rgba(255,255,255,0.02);}
+.subj-top{display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;}
+.subj-name{font-weight:700; font-size:15px;}
+.subj-detail{font-size:12px; color:var(--text-dim); margin-top:8px; display:grid; grid-template-columns:1fr 1fr; gap:4px;}
+
+/* ---------- AI ---------- */
+.ai-core{
+  width:70px; height:70px; border-radius:50%; margin:0 auto 10px;
+  background:radial-gradient(circle at 35% 30%, rgba(77,243,255,0.9), rgba(163,123,255,0.4) 60%, transparent 75%);
+  position:relative; box-shadow:0 0 30px rgba(77,243,255,0.35);
+}
+.ai-core.thinking{animation:pulse 1s ease-in-out infinite;}
+@keyframes pulse{0%,100%{transform:scale(1);} 50%{transform:scale(1.08);}}
+.chat-log{max-height:340px; overflow-y:auto; display:flex; flex-direction:column; gap:10px; margin-bottom:12px; padding-right:4px;}
+.msg{padding:10px 13px; border-radius:10px; font-size:14px; max-width:88%; line-height:1.45;}
+.msg.user{align-self:flex-end; background:rgba(77,243,255,0.1); border:1px solid rgba(77,243,255,0.25);}
+.msg.ai{align-self:flex-start; background:rgba(163,123,255,0.08); border:1px solid rgba(163,123,255,0.22);}
+.msg.system{align-self:center; color:var(--text-dim); font-family:'Share Tech Mono'; font-size:11px;}
+.quick-row{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px;}
+.propose-card{border:1px solid rgba(255,199,102,0.4); background:rgba(255,199,102,0.06); border-radius:10px; padding:12px; margin-bottom:8px;}
+
+/* ---------- Universe ---------- */
+.moon-visual{width:64px; height:64px; border-radius:50%; background:#1a2230; position:relative; overflow:hidden; box-shadow:0 0 20px rgba(77,243,255,0.15);}
+.moon-shadow{position:absolute; top:0; height:100%; background:#05070a;}
+
+/* ---------- Toggle ---------- */
+.toggle{display:inline-flex; align-items:center; gap:10px; cursor:pointer;}
+.toggle .track{width:42px; height:22px; border-radius:20px; background:rgba(255,255,255,0.08); position:relative; transition:.2s;}
+.toggle .knob{width:16px; height:16px; border-radius:50%; background:var(--text-dim); position:absolute; top:3px; left:3px; transition:.2s;}
+.toggle.on .track{background:rgba(93,255,176,0.25);}
+.toggle.on .knob{left:23px; background:var(--green);}
+
+.empty{color:var(--text-dim); font-size:13px; text-align:center; padding:20px 0; font-family:'Share Tech Mono';}
+
+/* ---------- Splash / boot screen ---------- */
+.splash{
+  position:fixed; inset:0; z-index:500; background:var(--bg-deep);
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px;
+  transition:opacity .6s ease, visibility .6s ease;
+}
+.splash.hidden{ opacity:0; visibility:hidden; pointer-events:none; }
+.splash-atom{ animation:spin-atom 3s linear infinite; filter:drop-shadow(0 0 12px rgba(77,243,255,0.5)); }
+@keyframes spin-atom{ from{transform:rotate(0deg);} to{transform:rotate(360deg);} }
+.splash-title{ font-family:'Orbitron'; font-weight:800; font-size:26px; letter-spacing:4px; color:#fff; margin-top:16px; }
+.splash-title span{ color:var(--cyan); }
+.splash-tag{ font-family:'Share Tech Mono'; font-size:12px; color:var(--text-dim); letter-spacing:2px; margin-bottom:10px; }
+.splash-modules{ display:flex; flex-direction:column; gap:6px; min-height:110px; }
+.splash-module{ font-family:'Share Tech Mono'; font-size:12px; color:var(--text-dim); opacity:0; transform:translateY(4px); transition:opacity .3s ease, transform .3s ease, color .3s ease; }
+.splash-module.on{ opacity:1; transform:translateY(0); color:var(--green); }
+.splash-module .chk{ color:var(--green); margin-right:6px; }
+
+/* ---------- Laboratorio ---------- */
+.lab-tabs{display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap;}
+.lab-tab{padding:8px 14px; border-radius:9px; border:1px solid var(--line); background:transparent; color:var(--text-dim); font-size:12px; font-family:'Share Tech Mono'; cursor:pointer;}
+.lab-tab.active{background:rgba(77,243,255,0.12); color:var(--cyan); border-color:rgba(77,243,255,0.35);}
+.lab-panel{display:none;}
+.lab-panel.active{display:block;}
+.const-row{display:flex; justify-content:space-between; align-items:center; padding:10px 12px; border:1px solid var(--line); border-radius:9px; margin-bottom:6px; background:rgba(255,255,255,0.015);}
+.const-name{font-size:13px; font-weight:600;}
+.const-sym{color:var(--violet); font-family:'Share Tech Mono'; font-size:12px; margin-left:6px;}
+.const-val{font-family:'Share Tech Mono'; font-size:13px; color:var(--cyan); text-align:right;}
+.formula-group{margin-bottom:18px;}
+.formula-group h4{font-size:13px; letter-spacing:1px; color:var(--text-dim); margin-bottom:8px; text-transform:uppercase;}
+.formula-card{display:flex; justify-content:space-between; align-items:flex-start; gap:10px; padding:12px; border:1px solid var(--line); border-radius:9px; margin-bottom:8px; background:rgba(255,255,255,0.015);}
+.formula-expr{font-family:'Share Tech Mono'; font-size:15px; color:var(--green); margin-bottom:3px;}
+.formula-desc{font-size:12px; color:var(--text-dim);}
+.star-btn{background:none; border:none; font-size:16px; color:var(--text-dim); cursor:pointer; flex-shrink:0;}
+.star-btn.on{color:var(--amber);}
+.conv-row{display:grid; grid-template-columns:1fr auto 1fr; gap:10px; align-items:end; margin-bottom:14px;}
+.conv-result{font-family:'Share Tech Mono'; font-size:20px; color:var(--cyan); text-align:center; margin-top:10px;}
+
+/* Laboratorio: subject switch + Matemática */
+.lab-subject-tabs{display:flex; gap:8px; margin-bottom:14px;}
+.lab-subject-btn{padding:9px 16px; border-radius:10px; border:1px solid var(--line); background:rgba(255,255,255,0.02); color:var(--text-dim); font-size:13px; font-family:'Orbitron'; cursor:pointer;}
+.lab-subject-btn.active{background:rgba(163,123,255,0.14); color:var(--violet); border-color:rgba(163,123,255,0.4);}
+.lab-subject-panel{display:none;}
+.lab-subject-panel.active{display:block;}
+.calc-display{background:rgba(0,0,0,0.3); border:1px solid var(--line); border-radius:10px; padding:14px; font-family:'Share Tech Mono'; font-size:22px; text-align:right; margin-bottom:10px; min-height:34px; overflow-x:auto; white-space:nowrap;}
+.calc-grid{display:grid; grid-template-columns:repeat(5,1fr); gap:6px;}
+.calc-btn{padding:12px 0; border-radius:8px; border:1px solid var(--line); background:rgba(255,255,255,0.02); color:var(--text); font-family:'Share Tech Mono'; font-size:14px; cursor:pointer;}
+.calc-btn:active{background:rgba(77,243,255,0.15);}
+.calc-btn.op{color:var(--cyan);}
+.calc-btn.eq{background:rgba(93,255,176,0.15); color:var(--green); grid-column:span 2;}
+.calc-btn.clear{color:var(--red);}
+#graphCanvas{width:100%; background:rgba(0,0,0,0.25); border:1px solid var(--line); border-radius:10px; touch-action:none;}
+.step-output{font-size:14px; line-height:1.6; white-space:pre-wrap; margin-top:10px;}
+
+/* Química: tabla periódica */
+.element-grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(58px,1fr)); gap:6px;}
+.element-cell{aspect-ratio:1; border-radius:8px; border:1px solid var(--line); display:flex; flex-direction:column; align-items:center; justify-content:center; cursor:pointer; padding:2px;}
+.element-cell .z{font-size:8px; color:rgba(255,255,255,0.6); align-self:flex-start; margin-left:4px;}
+.element-cell .sym{font-family:'Orbitron'; font-size:15px; font-weight:700;}
+.element-cell .mass{font-size:7px; color:rgba(255,255,255,0.55);}
+.cat-alkali{background:rgba(255,107,122,0.16); border-color:rgba(255,107,122,0.35);}
+.cat-alkaline{background:rgba(255,199,102,0.16); border-color:rgba(255,199,102,0.35);}
+.cat-transition{background:rgba(163,123,255,0.16); border-color:rgba(163,123,255,0.35);}
+.cat-post{background:rgba(77,243,255,0.14); border-color:rgba(77,243,255,0.3);}
+.cat-metalloid{background:rgba(93,255,176,0.14); border-color:rgba(93,255,176,0.3);}
+.cat-nonmetal{background:rgba(93,255,176,0.22); border-color:rgba(93,255,176,0.4);}
+.cat-halogen{background:rgba(60,184,255,0.18); border-color:rgba(60,184,255,0.4);}
+.cat-noble{background:rgba(255,255,255,0.08); border-color:rgba(255,255,255,0.25);}
+.cat-lanthanide{background:rgba(233,157,37,0.16); border-color:rgba(233,157,37,0.35);}
+.cat-actinide{background:rgba(186,1,1,0.16); border-color:rgba(186,1,1,0.35);}
+
+/* Tendencias periódicas */
+.trend-row{display:grid; grid-template-columns:1fr auto auto; gap:10px; align-items:center; padding:12px 0; border-bottom:1px solid var(--line);}
+.trend-row:last-child{border-bottom:none;}
+.trend-name{font-size:13px; font-weight:600;}
+.trend-badge{display:flex; align-items:center; gap:6px; padding:6px 10px; border-radius:8px; font-size:12px; font-family:'Share Tech Mono'; white-space:nowrap;}
+.trend-up{color:var(--cyan); background:rgba(77,243,255,0.1);}
+.trend-down{color:var(--violet); background:rgba(163,123,255,0.1);}
+
+/* Sociales: glosario y tabla comparativa */
+.author-card{padding:14px; border:1px solid var(--line); border-radius:10px; margin-bottom:10px; background:rgba(255,255,255,0.015);}
+.author-name{font-weight:700; font-size:14px; color:var(--cyan);}
+.author-concept{font-size:12px; color:var(--violet); margin:2px 0 6px; font-family:'Share Tech Mono';}
+.author-desc{font-size:13px; line-height:1.5; color:var(--text);}
+.law-row{display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; padding:10px 0; border-bottom:1px solid var(--line); font-size:12px;}
+.law-row:first-child{font-family:'Orbitron'; font-size:11px; color:var(--text-dim); letter-spacing:.5px;}
+.law-row:last-child{border-bottom:none;}
+.law-aspect{color:var(--text-dim);}
+::-webkit-scrollbar{width:6px;} ::-webkit-scrollbar-thumb{background:rgba(77,243,255,0.2); border-radius:6px;}
+</style>
+</head>
+<body>
+<div class="scanlines"></div>
+<div class="splash" id="splashScreen">
+  <svg class="splash-atom" viewBox="0 0 200 200" width="120" height="120">
+    <ellipse cx="100" cy="100" rx="90" ry="34" fill="none" stroke="#4df3ff" stroke-width="6" transform="rotate(0 100 100)"/>
+    <ellipse cx="100" cy="100" rx="90" ry="34" fill="none" stroke="#a37bff" stroke-width="6" transform="rotate(60 100 100)"/>
+    <ellipse cx="100" cy="100" rx="90" ry="34" fill="none" stroke="#5dffb0" stroke-width="6" transform="rotate(120 100 100)"/>
+    <circle cx="100" cy="100" r="14" fill="#4df3ff"/>
+  </svg>
+  <div class="splash-title">QUARK<span>OS</span></div>
+  <div class="splash-tag">Inicializando...</div>
+  <div class="splash-modules" id="splashModules"></div>
+</div>
+
+<div class="app">
+  <div class="sidebar">
+    <div class="brand">QUARK</div>
+    <button class="nav-btn active" data-view="control">⌘<span>CONTROL</span></button>
+    <button class="nav-btn" data-view="calendar">📅<span>CALEND</span></button>
+    <button class="nav-btn" data-view="subjects">📚<span>MATERIAS</span></button>
+    <button class="nav-btn" data-view="tasks">✓<span>TAREAS</span></button>
+    <button class="nav-btn" data-view="lab">⚛<span>LAB</span></button>
+    <button class="nav-btn" data-view="sociales">📖<span>SOCIALES</span></button>
+    <button class="nav-btn" data-view="stats">📊<span>STATS</span></button>
+    <button class="nav-btn" data-view="ai">◈<span>IA</span></button>
+    <button class="nav-btn" data-view="universe">☾<span>OBSERV.</span></button>
+    <button class="nav-btn" data-view="ambiente">🌿<span>AMBIENTE</span></button>
+    <button class="nav-btn" data-view="settings">⚙<span>CONFIG</span></button>
+  </div>
+
+  <div class="main">
+
+    <!-- CONTROL -->
+    <div class="view active" id="view-control">
+      <div class="boot">
+        <div class="tag" id="bootTag">SISTEMA INICIADO</div>
+        <h1 id="greeting">Buenos días, Sae.</h1>
+        <div class="sub mono-data" id="todayLong"></div>
+      </div>
+      <div class="grid2">
+        <div class="card">
+          <div class="status-line"><span class="dot" id="dotTasks"></span><span id="statTasks">-- tareas pendientes</span></div>
+          <div class="status-line"><span class="dot green"></span><span id="statSubjects">-- materias activas</span></div>
+          <div class="status-line"><span class="dot amber" id="dotExam"></span><span id="statExam">Sin exámenes cargados</span></div>
+          <div class="recommend" id="recommendBox"><b>Recomendación:</b> <span id="recommendText">cargá tareas y materias para recibir sugerencias.</span></div>
+        </div>
+        <div class="card">
+          <h3 style="font-size:13px; letter-spacing:1px; color:var(--text-dim); margin-bottom:10px;">UNIVERSO HOY</h3>
+          <div style="display:flex; align-items:center; gap:14px;">
+            <div class="moon-visual" id="moonVisualMini"><div class="moon-shadow" id="moonShadowMini"></div></div>
+            <div>
+              <div style="font-size:14px; font-weight:700;" id="moonNameMini">--</div>
+              <div class="mono-data" style="font-size:12px; color:var(--text-dim);" id="moonPctMini">--% iluminada</div>
+              <div class="mono-data" style="font-size:11px; color:var(--text-dim); margin-top:6px;" id="sunTimesMini">☀ -- / -- </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-title">AUTOPILOTO</div>
+      <div class="card" style="display:flex; justify-content:space-between; align-items:center;">
+        <div>
+          <div style="font-weight:700; font-size:14px;" id="autopilotLabel">🔴 Autopiloto desactivado</div>
+          <div style="font-size:12px; color:var(--text-dim); margin-top:3px;">La IA puede sugerir reorganizar tu agenda. Nunca borra ni edita sin tu confirmación.</div>
+        </div>
+        <div class="toggle" id="autopilotToggle"><div class="track"><div class="knob"></div></div></div>
+      </div>
+    </div>
+
+    <!-- CALENDAR -->
+    <div class="view" id="view-calendar">
+      <div class="cal-head">
+        <button class="btn ghost" id="calPrev">◀</button>
+        <h2 id="calMonthLabel" style="font-size:16px; letter-spacing:1px;"></h2>
+        <button class="btn ghost" id="calNext">▶</button>
+      </div>
+      <div class="cal-grid" id="calDow"></div>
+      <div class="cal-grid" id="calGrid" style="margin-top:6px;"></div>
+
+      <div id="dayPanel" style="display:none;">
+        <div class="section-title" id="dayPanelTitle">DÍA</div>
+        <div class="card">
+          <div id="dayTasks"></div>
+          <button class="btn small" id="addTaskFromDay" style="margin-top:10px;">+ Agregar tarea este día</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- SUBJECTS -->
+    <div class="view" id="view-subjects">
+      <div class="section-title">MATERIAS</div>
+      <div id="subjectsGrid" class="grid2"></div>
+      <button class="btn violet" id="addSubjectBtn" style="margin-top:16px;">+ Nueva materia</button>
+    </div>
+
+    <!-- TASKS -->
+    <div class="view" id="view-tasks">
+      <div class="section-title">TAREAS</div>
+      <div style="display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap;">
+        <select id="taskFilter" style="width:auto;">
+          <option value="all">Todas</option>
+          <option value="pending">Pendientes</option>
+          <option value="done">Completadas</option>
+        </select>
+        <button class="btn" id="addTaskBtn">+ Nueva tarea</button>
+      </div>
+      <div id="tasksList"></div>
+    </div>
+
+    <!-- LAB -->
+    <div class="view" id="view-lab">
+      <div class="section-title">LABORATORIO</div>
+      <div class="lab-subject-tabs">
+        <button class="lab-subject-btn active" data-subject="fisica">⚛ Física</button>
+        <button class="lab-subject-btn" data-subject="mate">➗ Matemática</button>
+        <button class="lab-subject-btn" data-subject="quimica">🧪 Química</button>
+      </div>
+
+      <!-- FÍSICA -->
+      <div class="lab-subject-panel active" id="subject-fisica">
+        <div class="lab-tabs">
+          <button class="lab-tab active" data-lab="constants">Constantes</button>
+          <button class="lab-tab" data-lab="formulas">Fórmulas</button>
+          <button class="lab-tab" data-lab="converter">Conversor de unidades</button>
+        </div>
+
+        <div class="lab-panel active" id="lab-constants">
+          <input id="constSearch" placeholder="Buscar constante (ej: gravitación, Planck, c)..." style="margin-bottom:14px;">
+          <div class="card" id="constList"></div>
+        </div>
+
+        <div class="lab-panel" id="lab-formulas">
+          <div style="margin-bottom:12px;">
+            <button class="btn small" id="favFilterBtn">⭐ Ver solo favoritas</button>
+          </div>
+          <div id="formulasList"></div>
+        </div>
+
+        <div class="lab-panel" id="lab-converter">
+          <div class="card">
+            <label>Categoría</label>
+            <select id="convCategory" style="margin-bottom:14px;"></select>
+            <div class="conv-row">
+              <div><label>Valor</label><input id="convValue" type="number" value="1"></div>
+              <div style="padding-bottom:9px; color:var(--text-dim);">→</div>
+              <div><label>De</label><select id="convFrom"></select></div>
+            </div>
+            <label>A</label><select id="convTo" style="margin-bottom:6px;"></select>
+            <div class="conv-result" id="convResult">--</div>
+          </div>
+          <div class="section-title">MÚLTIPLOS Y SUBMÚLTIPLOS (SI)</div>
+          <div class="card"><div id="siPrefixTable"></div></div>
+        </div>
+      </div>
+
+      <!-- MATEMÁTICA -->
+      <div class="lab-subject-panel" id="subject-mate">
+        <div class="lab-tabs">
+          <button class="lab-tab active" data-mate="calc">Calculadora</button>
+          <button class="lab-tab" data-mate="graph">Graficador</button>
+          <button class="lab-tab" data-mate="steps">Derivadas / Integrales</button>
+          <button class="lab-tab" data-mate="formulas">Fórmulas</button>
+        </div>
+
+        <div class="lab-panel active" id="mate-calc">
+          <div class="card">
+            <div class="calc-display" id="calcDisplay">0</div>
+            <div class="calc-grid">
+              <button class="calc-btn clear" data-k="C">C</button>
+              <button class="calc-btn op" data-k="(">(</button>
+              <button class="calc-btn op" data-k=")">)</button>
+              <button class="calc-btn op" data-k="/">÷</button>
+              <button class="calc-btn op" data-k="⌫">⌫</button>
+
+              <button class="calc-btn" data-k="7">7</button>
+              <button class="calc-btn" data-k="8">8</button>
+              <button class="calc-btn" data-k="9">9</button>
+              <button class="calc-btn op" data-k="*">×</button>
+              <button class="calc-btn op" data-k="^">^</button>
+
+              <button class="calc-btn" data-k="4">4</button>
+              <button class="calc-btn" data-k="5">5</button>
+              <button class="calc-btn" data-k="6">6</button>
+              <button class="calc-btn op" data-k="-">−</button>
+              <button class="calc-btn op" data-k="sqrt(">√</button>
+
+              <button class="calc-btn" data-k="1">1</button>
+              <button class="calc-btn" data-k="2">2</button>
+              <button class="calc-btn" data-k="3">3</button>
+              <button class="calc-btn op" data-k="+">+</button>
+              <button class="calc-btn op" data-k="pi">π</button>
+
+              <button class="calc-btn" data-k="0">0</button>
+              <button class="calc-btn" data-k=".">.</button>
+              <button class="calc-btn op" data-k="sin(">sin</button>
+              <button class="calc-btn op" data-k="cos(">cos</button>
+              <button class="calc-btn op" data-k="log(">log</button>
+
+              <button class="calc-btn eq" data-k="=">=</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="lab-panel" id="mate-graph">
+          <div class="card">
+            <label>f(x) =</label>
+            <input id="graphFn" value="sin(x)" style="margin-bottom:12px;">
+            <canvas id="graphCanvas" height="220"></canvas>
+            <div style="font-size:11px; color:var(--text-dim); margin-top:8px;">Funciones: x, +, -, *, /, ^, sin, cos, tan, sqrt, log, abs, pi, e</div>
+          </div>
+        </div>
+
+        <div class="lab-panel" id="mate-steps">
+          <div class="card">
+            <label>Función</label>
+            <input id="stepsFn" placeholder="ej: x^2 + 3x" style="margin-bottom:12px;">
+            <div style="display:flex; gap:8px; margin-bottom:6px;">
+              <button class="btn small violet" id="stepsDeriv">Explicar derivada</button>
+              <button class="btn small violet" id="stepsInteg">Explicar integral</button>
+            </div>
+            <div class="step-output" id="stepsOutput"></div>
+          </div>
+        </div>
+
+        <div class="lab-panel" id="mate-formulas">
+          <div id="calcFormulasList"></div>
+        </div>
+      </div>
+
+      <!-- QUÍMICA -->
+      <div class="lab-subject-panel" id="subject-quimica">
+        <div class="lab-tabs">
+          <button class="lab-tab active" data-quim="table">Tabla periódica</button>
+          <button class="lab-tab" data-quim="trends">Tendencias</button>
+          <button class="lab-tab" data-quim="balance">Balanceador</button>
+          <button class="lab-tab" data-quim="moles">Moles / masa molar</button>
+        </div>
+
+        <div class="lab-panel active" id="quim-table">
+          <input id="elementSearch" placeholder="Buscar elemento (nombre, símbolo o número)..." style="margin-bottom:12px;">
+          <div class="element-grid" id="elementGrid"></div>
+        </div>
+
+        <div class="lab-panel" id="quim-trends">
+          <div class="card">
+            <div style="font-size:12px; color:var(--text-dim); margin-bottom:14px;">Cómo varían las propiedades a lo largo de un <b style="color:var(--cyan);">período</b> (fila →) y de un <b style="color:var(--violet);">grupo</b> (columna ↓)</div>
+            <div id="trendsTable"></div>
+          </div>
+          <div class="section-title">REGLA DEL OCTETO</div>
+          <div class="card">
+            <div style="font-size:13px; line-height:1.6; margin-bottom:14px;">Los átomos tienden a completar su último nivel de energía con 8 electrones, alcanzando una estabilidad similar a la de los gases nobles.</div>
+            <label>Excepciones (aceptan otra cantidad de electrones)</label>
+            <div id="octetTable" style="margin-top:8px;"></div>
+          </div>
+        </div>
+
+        <div class="lab-panel" id="quim-balance">
+          <div class="card">
+            <label>Ecuación sin balancear (ej: H2 + O2 -> H2O)</label>
+            <input id="balanceInput" placeholder="H2 + O2 -> H2O" style="margin-bottom:10px;">
+            <button class="btn small violet" id="balanceBtn">Balancear</button>
+            <div class="step-output" id="balanceOutput"></div>
+          </div>
+        </div>
+
+        <div class="lab-panel" id="quim-moles">
+          <div class="card">
+            <label>Fórmula química (ej: H2O, NaCl, C6H12O6, Fe2(SO4)3)</label>
+            <input id="molarFormula" placeholder="H2O" style="margin-bottom:10px;">
+            <div class="conv-result" id="molarMassResult">--</div>
+            <div class="conv-row" style="margin-top:14px;">
+              <div><label>Gramos</label><input id="molarGrams" type="number" placeholder="0"></div>
+              <div style="padding-bottom:9px; color:var(--text-dim);">⇄</div>
+              <div><label>Moles</label><input id="molarMoles" type="number" placeholder="0"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SOCIALES -->
+    <div class="view" id="view-sociales">
+      <div class="section-title">EDUCACIÓN Y TRANSFORMACIONES SOCIALES</div>
+      <div class="lab-tabs">
+        <button class="lab-tab active" data-soc="glosario">Glosario de autores</button>
+        <button class="lab-tab" data-soc="leyes">Ley 1420 vs 26206</button>
+        <button class="lab-tab" data-soc="ia">Preguntale a la IA</button>
+      </div>
+
+      <div class="lab-panel active" id="soc-glosario">
+        <input id="glosarioSearch" placeholder="Buscar autor o concepto..." style="margin-bottom:12px;">
+        <div id="glosarioList"></div>
+      </div>
+
+      <div class="lab-panel" id="soc-leyes">
+        <div class="card">
+          <div id="leyesTable"></div>
+        </div>
+      </div>
+
+      <div class="lab-panel" id="soc-ia">
+        <div class="card">
+          <label>Autor, concepto o marco teórico</label>
+          <input id="socConceptInput" placeholder="ej: colonialidad del saber, contrato de lectura..." style="margin-bottom:10px;">
+          <button class="btn small violet" id="socExplainBtn">Explicar</button>
+          <div class="step-output" id="socExplainOutput"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STATS -->
+    <div class="view" id="view-stats">
+      <div class="section-title">ESTADÍSTICAS</div>
+      <div class="grid3">
+        <div class="card"><div class="mono-data" style="font-size:11px; color:var(--text-dim);">RACHA</div><div style="font-size:28px; font-weight:800; color:var(--cyan);" id="statStreak">0</div><div style="font-size:11px; color:var(--text-dim);">días seguidos</div></div>
+        <div class="card"><div class="mono-data" style="font-size:11px; color:var(--text-dim);">COMPLETADAS</div><div style="font-size:28px; font-weight:800; color:var(--green);" id="statDonePct">0%</div><div style="font-size:11px; color:var(--text-dim);">del total</div></div>
+        <div class="card"><div class="mono-data" style="font-size:11px; color:var(--text-dim);">MATERIA TOP</div><div style="font-size:20px; font-weight:800; color:var(--violet);" id="statTopSubject">--</div><div style="font-size:11px; color:var(--text-dim);">más tareas activas</div></div>
+      </div>
+      <div class="section-title">TAREAS POR MATERIA</div>
+      <div class="card" id="subjectBars"></div>
+    </div>
+
+    <!-- AI -->
+    <div class="view" id="view-ai">
+      <div style="text-align:center; margin-bottom:8px;">
+        <div class="ai-core" id="aiCore"></div>
+        <div class="mono-data" style="font-size:11px; color:var(--text-dim);">QUARK IA</div>
+      </div>
+      <div class="quick-row">
+        <button class="btn small violet" id="qaExplain">🧠 Explicar un tema</button>
+        <button class="btn small violet" id="qaSchedule">📅 Armar cronograma para examen</button>
+        <button class="btn small violet" id="qaReorganize">♻ Sugerir reorganización</button>
+      </div>
+      <div id="proposeZone"></div>
+      <div class="card">
+        <div class="chat-log" id="chatLog"></div>
+        <div style="display:flex; gap:8px;">
+          <input id="chatInput" placeholder="Preguntale algo a QUARK...">
+          <button class="btn" id="chatSend">Enviar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- UNIVERSE -->
+    <div class="view" id="view-universe" style="background-image:url('observatorio-bg.jpg'); background-size:cover; background-position:top center; margin:-28px -32px; padding:28px 32px 40px; border-radius:0 0 20px 20px;">
+      <div class="section-title">UNIVERSO HOY</div>
+      <div class="grid2">
+        <div class="card" style="text-align:center;">
+          <div class="moon-visual" id="moonVisual" style="width:96px; height:96px; margin:0 auto 12px;"><div class="moon-shadow" id="moonShadow"></div></div>
+          <div style="font-weight:700; font-size:16px;" id="moonName">--</div>
+          <div class="mono-data" style="color:var(--text-dim); font-size:13px;" id="moonPct">-- % iluminada</div>
+        </div>
+        <div class="card">
+          <div class="status-line">☀ <span id="sunrise">--:--</span> amanecer</div>
+          <div class="status-line">🌇 <span id="sunset">--:--</span> atardecer</div>
+          <div class="status-line mono-data" style="font-size:11px; margin-top:10px; color:var(--text-dim);" id="locLabel">Ubicación: --</div>
+        </div>
+      </div>
+
+      <div class="section-title">🛰 PRÓXIMO PASE VISIBLE DE LA ISS</div>
+      <div class="card" id="issCard">
+        <div class="empty">Buscando...</div>
+      </div>
+
+      <div class="section-title">☄ PRÓXIMA LLUVIA DE METEOROS</div>
+      <div class="card" id="meteorCard"></div>
+
+      <div class="section-title">🪐 PLANETAS ESTE MES</div>
+      <div class="card" id="planetsCard">
+        <div style="font-size:11px; color:var(--text-dim); margin-bottom:10px;">Resumen de julio 2026 — no es en vivo, se actualiza a mano cada mes.</div>
+        <div id="planetsList"></div>
+      </div>
+
+      <div class="section-title">NOTA</div>
+      <div class="card" style="font-size:13px; color:var(--text-dim);">
+        La fase lunar, el sol y los pases de la ISS se calculan/consultan en tiempo real. Las posiciones planetarias son un resumen mensual curado (no en vivo) y la lista de lluvias de meteoros es un calendario anual fijo. El planetario 3D en vivo queda para una fase futura — requeriría una API dedicada mucho más pesada.
+      </div>
+    </div>
+
+    <!-- AMBIENTE -->
+    <div class="view" id="view-ambiente">
+      <div class="section-title">AMBIENTE</div>
+      <div class="grid2">
+        <div class="card" style="text-align:center;">
+          <div style="font-size:36px; margin-bottom:6px;" id="weatherEmoji">--</div>
+          <div style="font-size:24px; font-weight:800;" id="weatherTemp">--°C</div>
+          <div style="font-size:12px; color:var(--text-dim);" id="weatherDesc">--</div>
+        </div>
+        <div class="card">
+          <div class="status-line">💧 <span id="weatherHumidity">--%</span> humedad</div>
+          <div class="status-line">💨 <span id="weatherWind">-- km/h</span> viento</div>
+          <div class="status-line mono-data" style="font-size:11px; margin-top:8px; color:var(--text-dim);" id="ambLocLabel">Ubicación: --</div>
+        </div>
+      </div>
+
+      <div class="section-title">CALIDAD DE AIRE</div>
+      <div class="card">
+        <div style="display:flex; align-items:center; gap:14px; margin-bottom:14px;">
+          <div id="aqiBadge" style="width:56px; height:56px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Orbitron'; font-weight:800; font-size:16px;">--</div>
+          <div>
+            <div style="font-weight:700; font-size:14px;" id="aqiLabel">--</div>
+            <div style="font-size:11px; color:var(--text-dim);">Índice de Calidad del Aire (US AQI)</div>
+          </div>
+        </div>
+        <div class="subj-detail" style="grid-template-columns:1fr 1fr;">
+          <div>PM2.5: <span id="pm25">--</span> µg/m³</div>
+          <div>PM10: <span id="pm10">--</span> µg/m³</div>
+        </div>
+      </div>
+
+      <div class="section-title">ÍNDICE UV</div>
+      <div class="card">
+        <div style="display:flex; align-items:center; gap:14px;">
+          <div id="uvBadge" style="width:56px; height:56px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Orbitron'; font-weight:800; font-size:16px;">--</div>
+          <div style="font-size:12px; color:var(--text-dim);" id="uvAdvice">--</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div class="view" id="view-settings">
+      <div class="section-title">CONFIGURACIÓN</div>
+      <div class="card" style="display:flex; flex-direction:column; gap:16px;">
+        <div>
+          <label>Tu nombre</label>
+          <input id="settingsName" placeholder="Sae">
+        </div>
+        <div>
+          <label>Clave de API de Anthropic (para que la IA funcione fuera de claude.ai)</label>
+          <input id="settingsApiKey" type="password" placeholder="sk-ant-...">
+          <div style="font-size:11px; color:var(--text-dim); margin-top:6px;">Se guarda solo en este dispositivo. Nunca se sube a GitHub ni se comparte. Conseguila en console.anthropic.com.</div>
+          <button class="btn small" id="saveApiKey" style="margin-top:8px;">Guardar clave</button>
+          <span id="apiKeyStatus" style="font-size:11px; color:var(--green); margin-left:8px;"></span>
+        </div>
+        <div>
+          <button class="btn red" id="resetData">Borrar todos los datos</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Modal -->
+<div id="modalOverlay" style="display:none; position:fixed; inset:0; background:rgba(3,5,10,0.7); backdrop-filter:blur(4px); z-index:200; align-items:center; justify-content:center;">
+  <div class="card" id="modalBox" style="width:min(420px,90vw); max-height:85vh; overflow-y:auto;"></div>
+</div>
+
+<script>
+/* ================= STORAGE HELPERS ================= */
+/* window.storage solo existe dentro de claude.ai. Fuera (ej: GitHub Pages),
+   usamos localStorage del navegador como respaldo — mismo comportamiento, persistente. */
+const HAS_ARTIFACT_STORAGE = !!(window.storage && typeof window.storage.get === 'function');
+async function sGet(key, fallback){
+  try{
+    if(HAS_ARTIFACT_STORAGE){
+      const r = await window.storage.get(key);
+      return r ? JSON.parse(r.value) : fallback;
+    } else {
+      const raw = localStorage.getItem('quark:'+key);
+      return raw===null ? fallback : JSON.parse(raw);
+    }
+  }catch(e){ return fallback; }
+}
+async function sSet(key, value){
+  try{
+    if(HAS_ARTIFACT_STORAGE){
+      await window.storage.set(key, JSON.stringify(value));
+    } else {
+      localStorage.setItem('quark:'+key, JSON.stringify(value));
+    }
+  }catch(e){ console.error('storage error', e); }
+}
+async function sDelete(key){
+  try{
+    if(HAS_ARTIFACT_STORAGE){ await window.storage.delete(key); }
+    else{ localStorage.removeItem('quark:'+key); }
+  }catch(e){}
+}
+function uid(){ return Math.random().toString(36).slice(2,10); }
+function todayISO(){ const d=new Date(); return d.toISOString().slice(0,10); }
+
+/* ================= APUNTES: archivos guardados en IndexedDB del dispositivo ================= */
+/* Los archivos NO se sincronizan entre dispositivos ni se suben a ningún servidor — quedan solo acá. */
+let filesDB = null;
+function openFilesDB(){
+  return new Promise((resolve, reject)=>{
+    if(filesDB){ resolve(filesDB); return; }
+    const req = indexedDB.open('quark-files', 1);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if(!db.objectStoreNames.contains('files')){
+        const store = db.createObjectStore('files', {keyPath:'id'});
+        store.createIndex('subjectId', 'subjectId', {unique:false});
+      }
+    };
+    req.onsuccess = () => { filesDB = req.result; resolve(filesDB); };
+    req.onerror = () => reject(req.error);
+  });
+}
+async function addSubjectFile(subjectId, file){
+  const db = await openFilesDB();
+  const record = { id: uid(), subjectId, name: file.name, type: file.type, size: file.size, blob: file, addedAt: Date.now() };
+  return new Promise((resolve,reject)=>{
+    const tx = db.transaction('files','readwrite');
+    tx.objectStore('files').add(record);
+    tx.oncomplete = () => resolve(record);
+    tx.onerror = () => reject(tx.error);
+  });
+}
+async function listSubjectFiles(subjectId){
+  const db = await openFilesDB();
+  return new Promise((resolve,reject)=>{
+    const tx = db.transaction('files','readonly');
+    const idx = tx.objectStore('files').index('subjectId');
+    const req = idx.getAll(subjectId);
+    req.onsuccess = () => resolve(req.result.sort((a,b)=>b.addedAt-a.addedAt));
+    req.onerror = () => reject(req.error);
+  });
+}
+async function deleteSubjectFile(fileId){
+  const db = await openFilesDB();
+  return new Promise((resolve,reject)=>{
+    const tx = db.transaction('files','readwrite');
+    tx.objectStore('files').delete(fileId);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+function fmtBytes(n){
+  if(n < 1024) return n+' B';
+  if(n < 1024*1024) return (n/1024).toFixed(1)+' KB';
+  return (n/1024/1024).toFixed(1)+' MB';
+}
+
+/* ================= STATE ================= */
+let STATE = {
+  name:'Sae',
+  autopilot:false,
+  subjects:[],
+  tasks:[],
+  streakLog:[],
+  chat:[]
+};
+let calCursor = new Date();
+let selectedDay = null;
+
+const SUBJECT_DEFAULTS = [
+  {name:'Física', color:'#4df3ff'},
+  {name:'Matemática', color:'#5dffb0'},
+  {name:'Campo Teórico de la Práctica', color:'#a37bff'},
+  {name:'Cultura Digital y Educación', color:'#ffc766'},
+  {name:'Introducción a los Sistemas Biológicos', color:'#ff6b7a'},
+];
+
+async function loadState(){
+  STATE.name = await sGet('settings-name', 'Sae');
+  STATE.autopilot = await sGet('settings-autopilot', false);
+  STATE.subjects = await sGet('subjects', SUBJECT_DEFAULTS.map(s=>({id:uid(), name:s.name, color:s.color, professor:'', horario:'', promedio:'', progress:0})));
+  STATE.tasks = await sGet('tasks', []);
+  STATE.streakLog = await sGet('streak-log', []);
+  STATE.chat = await sGet('ai-chat-log', []);
+}
+async function saveSubjects(){ await sSet('subjects', STATE.subjects); }
+async function saveTasks(){ await sSet('tasks', STATE.tasks); }
+async function saveStreak(){ await sSet('streak-log', STATE.streakLog); }
+async function saveChat(){ await sSet('ai-chat-log', STATE.chat.slice(-24)); }
+
+/* ================= NAVIGATION ================= */
+document.querySelectorAll('.nav-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('view-'+btn.dataset.view).classList.add('active');
+    if(btn.dataset.view==='stats') renderStats();
+    if(btn.dataset.view==='subjects') renderSubjects();
+    if(btn.dataset.view==='tasks') renderTasks();
+    if(btn.dataset.view==='calendar') renderCalendar();
+    if(btn.dataset.view==='lab') renderLabConstants();
+    if(btn.dataset.view==='sociales'){ renderGlosario(); renderLeyes(); }
+    if(btn.dataset.view==='ambiente') loadAmbiente();
+  });
+});
+
+/* ================= MODAL ================= */
+function openModal(html){
+  document.getElementById('modalBox').innerHTML = html;
+  document.getElementById('modalOverlay').style.display='flex';
+}
+function closeModal(){ document.getElementById('modalOverlay').style.display='none'; }
+document.getElementById('modalOverlay').addEventListener('click', e=>{ if(e.target.id==='modalOverlay') closeModal(); });
+
+/* ================= DASHBOARD ================= */
+function greetingWord(){
+  const h = new Date().getHours();
+  if(h<12) return 'Buenos días';
+  if(h<19) return 'Buenas tardes';
+  return 'Buenas noches';
+}
+function renderDashboard(){
+  document.getElementById('greeting').textContent = `${greetingWord()}, ${STATE.name}.`;
+  document.getElementById('todayLong').textContent = new Date().toLocaleDateString('es-AR',{weekday:'long', day:'numeric', month:'long', year:'numeric'});
+
+  const pending = STATE.tasks.filter(t=>!t.done);
+  document.getElementById('statTasks').textContent = `${pending.length} tarea${pending.length!==1?'s':''} pendiente${pending.length!==1?'s':''}`;
+  document.getElementById('dotTasks').className = 'dot ' + (pending.length>5?'red':pending.length>0?'amber':'');
+  document.getElementById('statSubjects').textContent = `${STATE.subjects.length} materia${STATE.subjects.length!==1?'s':''} activa${STATE.subjects.length!==1?'s':''}`;
+
+  const exams = STATE.tasks.filter(t=>t.isExam && !t.done && t.date).sort((a,b)=>a.date.localeCompare(b.date));
+  if(exams.length){
+    const days = Math.ceil((new Date(exams[0].date) - new Date(todayISO()))/86400000);
+    document.getElementById('statExam').textContent = `${exams[0].title} en ${days} día${days!==1?'s':''}`;
+    document.getElementById('dotExam').className = 'dot ' + (days<=3?'red':'amber');
+  } else {
+    document.getElementById('statExam').textContent = 'Sin exámenes cargados';
+  }
+
+  // recommendation (local heuristic, no AI call needed for dashboard)
+  let rec = 'Todo tranquilo. Buen momento para adelantar algo de lectura.';
+  if(exams.length && Math.ceil((new Date(exams[0].date)-new Date(todayISO()))/86400000) <= 5){
+    rec = `Repasar para "${exams[0].title}" — quedan pocos días.`;
+  } else if(pending.length>0){
+    const bySubj={};
+    pending.forEach(t=>{bySubj[t.subject]=(bySubj[t.subject]||0)+1;});
+    const top = Object.entries(bySubj).sort((a,b)=>b[1]-a[1])[0];
+    if(top) rec = `Tenés ${top[1]} tarea(s) de ${top[0]} pendientes. Es un buen bloque para hoy.`;
+  }
+  document.getElementById('recommendText').textContent = rec;
+
+  // autopilot toggle visual
+  const t = document.getElementById('autopilotToggle');
+  t.classList.toggle('on', STATE.autopilot);
+  document.getElementById('autopilotLabel').textContent = STATE.autopilot ? '🟢 Autopiloto activado' : '🔴 Autopiloto desactivado';
+
+  renderUniverseMini();
+}
+document.getElementById('autopilotToggle').addEventListener('click', async ()=>{
+  STATE.autopilot = !STATE.autopilot;
+  await sSet('settings-autopilot', STATE.autopilot);
+  renderDashboard();
+});
+
+/* ================= SUBJECTS ================= */
+function renderSubjects(){
+  const grid = document.getElementById('subjectsGrid');
+  if(!STATE.subjects.length){ grid.innerHTML = '<div class="empty">Sin materias todavía.</div>'; return; }
+  grid.innerHTML = STATE.subjects.map(s=>{
+    const pending = STATE.tasks.filter(t=>t.subject===s.name && !t.done).length;
+    return `<div class="subj-card">
+      <div class="subj-top">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="width:10px;height:10px;border-radius:50%;background:${s.color};box-shadow:0 0 8px ${s.color};display:inline-block;"></span>
+          <span class="subj-name">${s.name}</span>
+        </div>
+        <button class="btn ghost small" onclick="editSubject('${s.id}')">✎</button>
+      </div>
+      <div class="bar-track"><div class="bar-fill" style="width:${s.progress||0}%; background:${s.color};"></div></div>
+      <div class="subj-detail">
+        <div>Prof: ${s.professor||'--'}</div>
+        <div>Horario: ${s.horario||'--'}</div>
+        <div>Promedio: ${s.promedio||'--'}</div>
+        <div>Pendientes: ${pending}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+window.editSubject = function(id){
+  const s = STATE.subjects.find(x=>x.id===id);
+  openModal(`
+    <h3 style="margin-bottom:14px;">${s.name}</h3>
+    <label>Profesor/a</label><input id="mProf" value="${s.professor||''}" style="margin-bottom:10px;">
+    <label>Horario</label><input id="mHor" value="${s.horario||''}" style="margin-bottom:10px;">
+    <label>Promedio</label><input id="mProm" value="${s.promedio||''}" style="margin-bottom:10px;">
+    <label>Avance (%)</label><input id="mProg" type="number" min="0" max="100" value="${s.progress||0}" style="margin-bottom:16px;">
+    <label>Apuntes y archivos (guardados solo en este dispositivo)</label>
+    <input type="file" id="mFileInput" multiple style="margin-bottom:8px;">
+    <div id="mFilesList" style="margin-bottom:16px;"></div>
+    <div style="display:flex; gap:8px;">
+      <button class="btn" id="mSave">Guardar</button>
+      <button class="btn red" id="mDelete">Eliminar materia</button>
+      <button class="btn ghost" onclick="closeModal()">Cancelar</button>
+    </div>
+  `);
+  async function refreshFiles(){
+    const files = await listSubjectFiles(id);
+    const el = document.getElementById('mFilesList');
+    el.innerHTML = files.length ? files.map(f => `
+      <div class="task" style="padding:8px 10px;">
+        <div class="task-body" style="cursor:pointer;" onclick="openSubjectFile('${f.id}')">
+          <div class="task-title" style="font-size:13px;">📎 ${f.name}</div>
+          <div class="task-meta">${fmtBytes(f.size)} · ${new Date(f.addedAt).toLocaleDateString('es-AR')}</div>
+        </div>
+        <button class="btn ghost small" onclick="removeSubjectFile('${f.id}','${id}')">✕</button>
+      </div>
+    `).join('') : '<div class="empty" style="padding:10px 0;">Sin archivos todavía.</div>';
+  }
+  refreshFiles();
+  document.getElementById('mFileInput').addEventListener('change', async (e)=>{
+    for(const file of e.target.files){ await addSubjectFile(id, file); }
+    e.target.value = '';
+    refreshFiles();
+  });
+  document.getElementById('mSave').onclick = async ()=>{
+    s.professor=document.getElementById('mProf').value;
+    s.horario=document.getElementById('mHor').value;
+    s.promedio=document.getElementById('mProm').value;
+    s.progress=Number(document.getElementById('mProg').value)||0;
+    await saveSubjects(); closeModal(); renderSubjects(); renderDashboard();
+  };
+  document.getElementById('mDelete').onclick = async ()=>{
+    const files = await listSubjectFiles(id);
+    for(const f of files){ await deleteSubjectFile(f.id); }
+    STATE.subjects = STATE.subjects.filter(x=>x.id!==id);
+    await saveSubjects(); closeModal(); renderSubjects(); renderDashboard();
+  };
+};
+window.openSubjectFile = async function(fileId){
+  const db = await openFilesDB();
+  const tx = db.transaction('files','readonly');
+  const req = tx.objectStore('files').get(fileId);
+  req.onsuccess = () => {
+    const rec = req.result;
+    if(!rec) return;
+    const url = URL.createObjectURL(rec.blob);
+    window.open(url, '_blank');
+    setTimeout(()=>URL.revokeObjectURL(url), 60000);
+  };
+};
+window.removeSubjectFile = async function(fileId, subjectId){
+  await deleteSubjectFile(fileId);
+  window.editSubject(subjectId);
+};
+document.getElementById('addSubjectBtn').addEventListener('click', ()=>{
+  openModal(`
+    <h3 style="margin-bottom:14px;">Nueva materia</h3>
+    <label>Nombre</label><input id="nName" style="margin-bottom:10px;">
+    <label>Color</label><input id="nColor" type="color" value="#4df3ff" style="margin-bottom:16px; height:38px;">
+    <div style="display:flex; gap:8px;">
+      <button class="btn" id="nSave">Crear</button>
+      <button class="btn ghost" onclick="closeModal()">Cancelar</button>
+    </div>
+  `);
+  document.getElementById('nSave').onclick = async ()=>{
+    const name = document.getElementById('nName').value.trim();
+    if(!name) return;
+    STATE.subjects.push({id:uid(), name, color:document.getElementById('nColor').value, professor:'', horario:'', promedio:'', progress:0});
+    await saveSubjects(); closeModal(); renderSubjects();
+  };
+});
+
+/* ================= TASKS ================= */
+function taskModal(existing, prefillDate){
+  const opts = STATE.subjects.map(s=>`<option value="${s.name}" ${existing&&existing.subject===s.name?'selected':''}>${s.name}</option>`).join('');
+  openModal(`
+    <h3 style="margin-bottom:14px;">${existing?'Editar tarea':'Nueva tarea'}</h3>
+    <label>Título</label><input id="tTitle" value="${existing?existing.title:''}" style="margin-bottom:10px;">
+    <label>Materia</label><select id="tSubj" style="margin-bottom:10px;">${opts}</select>
+    <label>Fecha</label><input id="tDate" type="date" value="${existing?existing.date:(prefillDate||todayISO())}" style="margin-bottom:10px;">
+    <label>Prioridad</label>
+    <select id="tPrio" style="margin-bottom:10px;">
+      <option value="low" ${existing&&existing.priority==='low'?'selected':''}>Baja</option>
+      <option value="medium" ${!existing||existing.priority==='medium'?'selected':''}>Media</option>
+      <option value="high" ${existing&&existing.priority==='high'?'selected':''}>Alta</option>
+    </select>
+    <label style="display:flex; align-items:center; gap:8px; margin-bottom:10px;"><input type="checkbox" id="tExam" style="width:auto;" ${existing&&existing.isExam?'checked':''}> Es examen/parcial</label>
+    <label>Notas</label><textarea id="tNotes" rows="2" style="margin-bottom:16px;">${existing?(existing.notes||''):''}</textarea>
+    <div style="display:flex; gap:8px;">
+      <button class="btn" id="tSave">Guardar</button>
+      ${existing?'<button class="btn red" id="tDelete">Eliminar</button>':''}
+      <button class="btn ghost" onclick="closeModal()">Cancelar</button>
+    </div>
+  `);
+  document.getElementById('tSave').onclick = async ()=>{
+    const title = document.getElementById('tTitle').value.trim();
+    if(!title) return;
+    const data = {
+      title, subject:document.getElementById('tSubj').value, date:document.getElementById('tDate').value,
+      priority:document.getElementById('tPrio').value, isExam:document.getElementById('tExam').checked,
+      notes:document.getElementById('tNotes').value
+    };
+    if(existing){ Object.assign(existing, data); }
+    else { STATE.tasks.push({id:uid(), done:false, ...data}); }
+    await saveTasks(); closeModal(); renderTasks(); renderCalendar(); renderDashboard();
+  };
+  if(existing){
+    document.getElementById('tDelete').onclick = async ()=>{
+      STATE.tasks = STATE.tasks.filter(t=>t.id!==existing.id);
+      await saveTasks(); closeModal(); renderTasks(); renderCalendar(); renderDashboard();
+    };
+  }
+}
+document.getElementById('addTaskBtn').addEventListener('click', ()=>taskModal(null));
+document.getElementById('taskFilter').addEventListener('change', renderTasks);
+
+function subjColor(name){ const s = STATE.subjects.find(x=>x.name===name); return s?s.color:'#7f93ab'; }
+
+async function toggleTask(id){
+  const t = STATE.tasks.find(x=>x.id===id);
+  t.done = !t.done;
+  if(t.done){
+    const d = todayISO();
+    if(!STATE.streakLog.includes(d)) STATE.streakLog.push(d);
+    await saveStreak();
+  }
+  await saveTasks(); renderTasks(); renderCalendar(); renderDashboard(); renderStats();
+}
+window.toggleTask = toggleTask;
+window.editTask = (id)=>taskModal(STATE.tasks.find(t=>t.id===id));
+
+function renderTasks(){
+  const filter = document.getElementById('taskFilter').value;
+  let list = [...STATE.tasks].sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  if(filter==='pending') list = list.filter(t=>!t.done);
+  if(filter==='done') list = list.filter(t=>t.done);
+  const el = document.getElementById('tasksList');
+  if(!list.length){ el.innerHTML = '<div class="empty">No hay tareas para mostrar.</div>'; return; }
+  el.innerHTML = list.map(t=>`
+    <div class="task ${t.done?'done':''}">
+      <div class="check ${t.done?'on':''}" onclick="toggleTask('${t.id}')">${t.done?'✓':''}</div>
+      <div class="task-body" onclick="editTask('${t.id}')">
+        <div class="task-title">${t.isExam?'📖 ':''}${t.title}</div>
+        <div class="task-meta">
+          <span class="chip" style="background:${subjColor(t.subject)}22; color:${subjColor(t.subject)};">${t.subject||'—'}</span>
+          <span>${t.date||'sin fecha'}</span>
+          <span>${({low:'baja',medium:'media',high:'alta'})[t.priority]||''}</span>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+/* ================= CALENDAR ================= */
+const DOW = ['LUN','MAR','MIÉ','JUE','VIE','SÁB','DOM'];
+function renderCalendar(){
+  const y = calCursor.getFullYear(), m = calCursor.getMonth();
+  document.getElementById('calMonthLabel').textContent = calCursor.toLocaleDateString('es-AR',{month:'long', year:'numeric'}).toUpperCase();
+  document.getElementById('calDow').innerHTML = DOW.map(d=>`<div class="cal-dow">${d}</div>`).join('');
+
+  const firstDay = new Date(y,m,1);
+  let startOffset = (firstDay.getDay()+6)%7; // Monday=0
+  const daysInMonth = new Date(y,m+1,0).getDate();
+  const daysPrevMonth = new Date(y,m,0).getDate();
+
+  let cells = [];
+  for(let i=startOffset;i>0;i--) cells.push({day:daysPrevMonth-i+1, other:true});
+  for(let d=1; d<=daysInMonth; d++) cells.push({day:d, other:false});
+  while(cells.length % 7 !== 0) cells.push({day:cells.length, other:true});
+
+  const todayStr = todayISO();
+  document.getElementById('calGrid').innerHTML = cells.map(c=>{
+    const dateStr = c.other? '' : `${y}-${String(m+1).padStart(2,'0')}-${String(c.day).padStart(2,'0')}`;
+    const dayTasks = c.other? [] : STATE.tasks.filter(t=>t.date===dateStr);
+    const dotsHtml = dayTasks.slice(0,4).map(t=>`<span style="background:${subjColor(t.subject)}"></span>`).join('');
+    return `<div class="cal-day ${c.other?'other':''} ${dateStr===todayStr?'today':''}" ${!c.other?`onclick="openDay('${dateStr}')"`:''}>
+      <div>${c.day}</div><div class="dots">${dotsHtml}</div>
+    </div>`;
+  }).join('');
+}
+document.getElementById('calPrev').addEventListener('click', ()=>{ calCursor.setMonth(calCursor.getMonth()-1); renderCalendar(); });
+document.getElementById('calNext').addEventListener('click', ()=>{ calCursor.setMonth(calCursor.getMonth()+1); renderCalendar(); });
+
+window.openDay = function(dateStr){
+  selectedDay = dateStr;
+  document.getElementById('dayPanel').style.display='block';
+  const d = new Date(dateStr+'T00:00:00');
+  document.getElementById('dayPanelTitle').textContent = d.toLocaleDateString('es-AR',{weekday:'long', day:'numeric', month:'long'}).toUpperCase();
+  const dayTasks = STATE.tasks.filter(t=>t.date===dateStr);
+  const el = document.getElementById('dayTasks');
+  el.innerHTML = dayTasks.length? dayTasks.map(t=>`
+    <div class="task ${t.done?'done':''}">
+      <div class="check ${t.done?'on':''}" onclick="toggleTask('${t.id}')">${t.done?'✓':''}</div>
+      <div class="task-body" onclick="editTask('${t.id}')">
+        <div class="task-title">${t.isExam?'📖 ':''}${t.title}</div>
+        <div class="task-meta"><span class="chip" style="background:${subjColor(t.subject)}22; color:${subjColor(t.subject)};">${t.subject}</span></div>
+      </div>
+    </div>`).join('') : '<div class="empty">Sin tareas este día.</div>';
+};
+document.getElementById('addTaskFromDay').addEventListener('click', ()=>{
+  if(selectedDay) taskModal(null, selectedDay);
+});
+
+/* ================= STATS ================= */
+function renderStats(){
+  // streak: consecutive days up to today with completion
+  let streak = 0;
+  let cursor = new Date();
+  while(true){
+    const iso = cursor.toISOString().slice(0,10);
+    if(STATE.streakLog.includes(iso)){ streak++; cursor.setDate(cursor.getDate()-1); }
+    else break;
+  }
+  document.getElementById('statStreak').textContent = streak;
+
+  const total = STATE.tasks.length, done = STATE.tasks.filter(t=>t.done).length;
+  document.getElementById('statDonePct').textContent = total? Math.round(done/total*100)+'%' : '0%';
+
+  const bySubj = {};
+  STATE.tasks.forEach(t=>{ bySubj[t.subject]=(bySubj[t.subject]||0)+1; });
+  const top = Object.entries(bySubj).sort((a,b)=>b[1]-a[1])[0];
+  document.getElementById('statTopSubject').textContent = top? top[0] : '--';
+
+  const maxCount = Math.max(1, ...Object.values(bySubj));
+  const barsEl = document.getElementById('subjectBars');
+  if(!Object.keys(bySubj).length){ barsEl.innerHTML = '<div class="empty">Sin datos todavía.</div>'; }
+  else{
+    barsEl.innerHTML = Object.entries(bySubj).map(([name,count])=>`
+      <div style="margin-bottom:12px;">
+        <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px;"><span>${name}</span><span class="mono-data">${count}</span></div>
+        <div class="bar-track"><div class="bar-fill" style="width:${count/maxCount*100}%; background:${subjColor(name)};"></div></div>
+      </div>`).join('');
+  }
+}
+
+/* ================= UNIVERSE: moon + sun (real math, no external APIs) ================= */
+function moonIllumination(date){
+  // Days since known new moon reference (2000-01-06 18:14 UTC)
+  const ref = Date.UTC(2000,0,6,18,14,0);
+  const synodic = 29.530588853;
+  const days = (date.getTime() - ref) / 86400000;
+  let phase = (days % synodic) / synodic;
+  if(phase < 0) phase += 1;
+  const illum = (1 - Math.cos(2*Math.PI*phase)) / 2;
+  let name, emoji;
+  if(phase < 0.03 || phase > 0.97){name='Luna nueva'; emoji='🌑';}
+  else if(phase < 0.22){name='Luna creciente'; emoji='🌒';}
+  else if(phase < 0.28){name='Cuarto creciente'; emoji='🌓';}
+  else if(phase < 0.47){name='Gibosa creciente'; emoji='🌔';}
+  else if(phase < 0.53){name='Luna llena'; emoji='🌕';}
+  else if(phase < 0.72){name='Gibosa menguante'; emoji='🌖';}
+  else if(phase < 0.78){name='Cuarto menguante'; emoji='🌗';}
+  else {name='Luna menguante'; emoji='🌘';}
+  return {phase, illum, name, emoji};
+}
+function sunTimes(date, lat, lon){
+  // Simplified NOAA solar calculation
+  const rad = Math.PI/180, deg = 180/Math.PI;
+  const start = Date.UTC(date.getFullYear(),0,1);
+  const N = Math.floor((Date.UTC(date.getFullYear(),date.getMonth(),date.getDate()) - start)/86400000) + 1;
+  const lngHour = lon/15;
+  function calc(isRise){
+    const t = N + ((isRise?6:18) - lngHour)/24;
+    const M = (0.9856*t) - 3.289;
+    let L = M + (1.916*Math.sin(M*rad)) + (0.020*Math.sin(2*M*rad)) + 282.634;
+    L = ((L%360)+360)%360;
+    let RA = deg*Math.atan(0.91764*Math.tan(L*rad));
+    RA = ((RA%360)+360)%360;
+    const Lq = Math.floor(L/90)*90; const RAq = Math.floor(RA/90)*90;
+    RA = RA + (Lq - RAq); RA = RA/15;
+    const sinDec = 0.39782*Math.sin(L*rad); const cosDec = Math.cos(Math.asin(sinDec));
+    const cosH = (Math.cos(90.833*rad) - (sinDec*Math.sin(lat*rad))) / (cosDec*Math.cos(lat*rad));
+    if(cosH>1 || cosH<-1) return null;
+    let H = isRise? 360-deg*Math.acos(cosH) : deg*Math.acos(cosH);
+    H = H/15;
+    const Tval = H + RA - (0.06571*t) - 6.622;
+    let UT = Tval - lngHour;
+    UT = ((UT%24)+24)%24;
+    return UT;
+  }
+  const riseUT = calc(true), setUT = calc(false);
+  function fmt(ut){
+    if(ut===null) return '--:--';
+    const localOffset = -date.getTimezoneOffset()/60;
+    let local = ut + localOffset;
+    local = ((local%24)+24)%24;
+    const h = Math.floor(local), min = Math.round((local-h)*60);
+    return `${String(h).padStart(2,'0')}:${String(min).padStart(2,'0')}`;
+  }
+  return {sunrise:fmt(riseUT), sunset:fmt(setUT)};
+}
+function paintMoon(el, illum, waning){
+  // simple shadow overlay representing illumination fraction
+  const pct = Math.round(illum*100);
+  const width = 100-pct;
+  el.style.width = width+'%';
+  el.style.left = waning? '0' : 'auto';
+  el.style.right = waning? 'auto' : '0';
+}
+let userLoc = {lat:-34.61, lon:-58.38, label:'Buenos Aires (aprox.)'}; // fallback: CABA
+function renderUniverseMini(){
+  const m = moonIllumination(new Date());
+  document.getElementById('moonNameMini').textContent = m.emoji+' '+m.name;
+  document.getElementById('moonPctMini').textContent = Math.round(m.illum*100)+'% iluminada';
+  paintMoon(document.getElementById('moonShadowMini'), m.illum, m.phase>0.5);
+  const st = sunTimes(new Date(), userLoc.lat, userLoc.lon);
+  document.getElementById('sunTimesMini').textContent = `☀ ${st.sunrise} / 🌇 ${st.sunset}`;
+}
+function renderUniverseFull(){
+  const m = moonIllumination(new Date());
+  document.getElementById('moonName').textContent = m.emoji+' '+m.name;
+  document.getElementById('moonPct').textContent = Math.round(m.illum*100)+'% iluminada';
+  paintMoon(document.getElementById('moonShadow'), m.illum, m.phase>0.5);
+  const st = sunTimes(new Date(), userLoc.lat, userLoc.lon);
+  document.getElementById('sunrise').textContent = st.sunrise;
+  document.getElementById('sunset').textContent = st.sunset;
+  document.getElementById('locLabel').textContent = 'Ubicación: '+userLoc.label;
+  loadIssPass();
+}
+if(navigator.geolocation){
+  navigator.geolocation.getCurrentPosition(pos=>{
+    userLoc = {lat:pos.coords.latitude, lon:pos.coords.longitude, label:'tu ubicación actual'};
+    renderUniverseMini(); renderUniverseFull();
+  }, ()=>{ /* keep fallback */ }, {timeout:4000});
+}
+
+/* ISS: próximo pase visible (API real, sin clave, CORS habilitado) */
+/* ================= AMBIENTE ================= */
+const WEATHER_CODES = {
+  0:['☀️','Despejado'], 1:['🌤️','Mayormente despejado'], 2:['⛅','Parcialmente nublado'], 3:['☁️','Nublado'],
+  45:['🌫️','Niebla'], 48:['🌫️','Niebla helada'],
+  51:['🌦️','Llovizna débil'], 53:['🌦️','Llovizna'], 55:['🌦️','Llovizna intensa'],
+  61:['🌧️','Lluvia débil'], 63:['🌧️','Lluvia'], 65:['🌧️','Lluvia intensa'],
+  71:['🌨️','Nieve débil'], 73:['🌨️','Nieve'], 75:['🌨️','Nieve intensa'],
+  80:['🌦️','Chubascos débiles'], 81:['🌧️','Chubascos'], 82:['⛈️','Chubascos intensos'],
+  95:['⛈️','Tormenta'], 96:['⛈️','Tormenta con granizo'], 99:['⛈️','Tormenta fuerte con granizo'],
+};
+function aqiCategory(aqi){
+  if(aqi<=50) return {label:'Buena', color:'var(--green)'};
+  if(aqi<=100) return {label:'Moderada', color:'var(--amber)'};
+  if(aqi<=150) return {label:'Dañina p/grupos sensibles', color:'#ff9640'};
+  if(aqi<=200) return {label:'Dañina', color:'var(--red)'};
+  if(aqi<=300) return {label:'Muy dañina', color:'#a83fff'};
+  return {label:'Peligrosa', color:'#7a0026'};
+}
+function uvCategory(uv){
+  if(uv<3) return {label:'Bajo — sin protección extra necesaria', color:'var(--green)'};
+  if(uv<6) return {label:'Moderado — usá protector solar', color:'var(--amber)'};
+  if(uv<8) return {label:'Alto — protector solar + sombra al mediodía', color:'#ff9640'};
+  if(uv<11) return {label:'Muy alto — evitá el sol del mediodía', color:'var(--red)'};
+  return {label:'Extremo — evitá exposición directa', color:'#a83fff'};
+}
+async function loadAmbiente(){
+  loadWeather();
+  loadAirQuality();
+}
+async function loadWeather(){
+  try{
+    const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${userLoc.lat}&longitude=${userLoc.lon}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&timezone=auto`);
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const w = await res.json();
+    const cur = w.current;
+    if(!cur) throw new Error('Sin datos de clima en la respuesta');
+    const [emoji, desc] = WEATHER_CODES[cur.weather_code] || ['🌡️','--'];
+    document.getElementById('weatherEmoji').textContent = emoji;
+    document.getElementById('weatherTemp').textContent = Math.round(cur.temperature_2m)+'°C';
+    document.getElementById('weatherDesc').textContent = desc;
+    document.getElementById('weatherHumidity').textContent = cur.relative_humidity_2m+'%';
+    document.getElementById('weatherWind').textContent = Math.round(cur.wind_speed_10m)+' km/h';
+    document.getElementById('ambLocLabel').textContent = 'Ubicación: '+userLoc.label;
+  }catch(e){
+    document.getElementById('weatherDesc').textContent = 'No se pudo consultar el clima ahora ('+e.message+').';
+  }
+}
+async function loadAirQuality(){
+  try{
+    const res = await fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${userLoc.lat}&longitude=${userLoc.lon}&hourly=pm2_5,pm10,us_aqi,uv_index&timezone=auto`);
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const a = await res.json();
+    if(!a.hourly) throw new Error('Sin datos de calidad de aire');
+
+    const nowIdx = 0; // primera hora del bloque horario ~ ahora
+    const aqi = Math.round(a.hourly.us_aqi[nowIdx]);
+    const cat = aqiCategory(aqi);
+    const badge = document.getElementById('aqiBadge');
+    badge.style.background = cat.color; badge.style.color = '#04140c';
+    badge.textContent = aqi;
+    document.getElementById('aqiLabel').textContent = cat.label;
+    document.getElementById('pm25').textContent = a.hourly.pm2_5[nowIdx].toFixed(1);
+    document.getElementById('pm10').textContent = a.hourly.pm10[nowIdx].toFixed(1);
+
+    const uv = a.hourly.uv_index[nowIdx];
+    const uvCat = uvCategory(uv);
+    const uvBadge = document.getElementById('uvBadge');
+    uvBadge.style.background = uvCat.color; uvBadge.style.color = '#04140c';
+    uvBadge.textContent = uv.toFixed(1);
+    document.getElementById('uvAdvice').textContent = uvCat.label;
+  }catch(e){
+    document.getElementById('aqiLabel').textContent = 'No se pudo consultar ('+e.message+')';
+  }
+}
+
+async function loadIssPass(){
+  const card = document.getElementById('issCard');
+  try{
+    const res = await fetch(`https://iss-api.polluxlabs.io/iss-pass?lat=${userLoc.lat}&lon=${userLoc.lon}`);
+    if(!res.ok) throw new Error('API error');
+    const data = await res.json();
+    const visiblePass = (data.passes||[]).find(p => p.visible);
+    if(!visiblePass){ card.innerHTML = '<div class="empty">Sin pases visibles en los próximos días desde tu ubicación.</div>'; return; }
+    const rise = new Date(visiblePass.rise.time);
+    const timeStr = rise.toLocaleString('es-AR',{weekday:'long', day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'});
+    card.innerHTML = `
+      <div class="status-line"><span class="dot green"></span>Visible el ${timeStr}</div>
+      <div class="status-line mono-data" style="font-size:11px; color:var(--text-dim);">Aparece por el ${visiblePass.rise.compass}, culmina a ${visiblePass.culmination.elevation_deg.toFixed(0)}° de altura, se pierde por el ${visiblePass.set.compass}</div>
+    `;
+  }catch(e){
+    card.innerHTML = '<div class="empty">No se pudo consultar la ISS ahora. Probá de nuevo más tarde.</div>';
+  }
+}
+
+/* Lluvias de meteoros: calendario anual fijo (fechas de pico, estables año a año) */
+const METEOR_SHOWERS = [
+  {name:'Cuadrántidas', month:1, day:3},
+  {name:'Líridas', month:4, day:22},
+  {name:'Eta Acuáridas', month:5, day:5},
+  {name:'Delta Acuáridas Sur', month:7, day:30},
+  {name:'Perseidas', month:8, day:12},
+  {name:'Oriónidas', month:10, day:21},
+  {name:'Leónidas', month:11, day:17},
+  {name:'Gemínidas', month:12, day:13},
+  {name:'Úrsidas', month:12, day:22},
+];
+function renderMeteorShowers(){
+  const today = new Date();
+  let next = null, minDiff = Infinity;
+  METEOR_SHOWERS.forEach(s => {
+    let peak = new Date(today.getFullYear(), s.month-1, s.day);
+    if(peak < today) peak = new Date(today.getFullYear()+1, s.month-1, s.day);
+    const diff = (peak - today) / 86400000;
+    if(diff < minDiff){ minDiff = diff; next = {...s, peak}; }
+  });
+  const days = Math.ceil(minDiff);
+  document.getElementById('meteorCard').innerHTML = `
+    <div class="status-line"><span class="dot amber"></span>${next.name} — pico el ${next.peak.toLocaleDateString('es-AR',{day:'numeric', month:'long'})}</div>
+    <div class="status-line mono-data" style="font-size:11px; color:var(--text-dim);">En ${days} día${days!==1?'s':''}. Mejor visibilidad después de medianoche, lejos de luces de ciudad.</div>
+  `;
+}
+
+/* Planetas: resumen curado del mes (no en vivo — requiere actualización manual) */
+const PLANETS_THIS_MONTH = [
+  {name:'Venus', when:'Evening', desc:'Domina el cielo del atardecer, bien alto en el oeste apenas se pone el sol. Es el objeto más brillante después de la Luna.'},
+  {name:'Júpiter', when:'Evening', desc:'Muy bajo en el horizonte oeste al anochecer, cada vez más difícil de ver — se acerca a conjunción con el Sol a fin de mes.'},
+  {name:'Marte', when:'Morning', desc:'Visible antes del amanecer, cerca de las Pléyades y Aldebarán, subiendo de altura hacia fin de mes.'},
+  {name:'Saturno', when:'Morning', desc:'Sale de madrugada y queda bien alto antes del amanecer — el mejor planeta para observar de madrugada este mes.'},
+  {name:'Mercurio', when:'Variable', desc:'Difícil de ver: pasa cerca del Sol a mitad de mes y reaparece muy bajo en el cielo matutino hacia fin de mes.'},
+];
+function renderPlanets(){
+  document.getElementById('planetsList').innerHTML = PLANETS_THIS_MONTH.map(p=>`
+    <div class="task" style="cursor:default;">
+      <div class="task-body">
+        <div class="task-title">${p.name} <span class="chip" style="background:rgba(77,243,255,0.12); color:var(--cyan);">${p.when==='Evening'?'Atardecer':p.when==='Morning'?'Madrugada':'Variable'}</span></div>
+        <div class="task-meta" style="color:var(--text); font-family:'Rajdhani'; font-size:13px;">${p.desc}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+/* ================= LABORATORIO: FÍSICA ================= */
+const CONSTANTS = [
+  {name:'Velocidad de la luz', sym:'c', val:'2.998 × 10⁸', unit:'m/s'},
+  {name:'Constante de gravitación universal', sym:'G', val:'6.674 × 10⁻¹¹', unit:'N·m²/kg²'},
+  {name:'Constante de Planck', sym:'h', val:'6.626 × 10⁻³⁴', unit:'J·s'},
+  {name:'Constante de Boltzmann', sym:'k', val:'1.381 × 10⁻²³', unit:'J/K'},
+  {name:'Carga elemental', sym:'e', val:'1.602 × 10⁻¹⁹', unit:'C'},
+  {name:'Masa del electrón', sym:'mₑ', val:'9.109 × 10⁻³¹', unit:'kg'},
+  {name:'Masa del protón', sym:'mₚ', val:'1.673 × 10⁻²⁷', unit:'kg'},
+  {name:'Número de Avogadro', sym:'Nₐ', val:'6.022 × 10²³', unit:'mol⁻¹'},
+  {name:'Constante de los gases', sym:'R', val:'8.314', unit:'J/(mol·K)'},
+  {name:'Aceleración de la gravedad (Tierra)', sym:'g', val:'9.81', unit:'m/s²'},
+  {name:'Permitividad del vacío', sym:'ε₀', val:'8.854 × 10⁻¹²', unit:'F/m'},
+  {name:'Permeabilidad del vacío', sym:'μ₀', val:'1.257 × 10⁻⁶', unit:'N/A²'},
+];
+function renderLabConstants(){
+  const q = (document.getElementById('constSearch').value||'').toLowerCase();
+  const list = CONSTANTS.filter(c => c.name.toLowerCase().includes(q) || c.sym.toLowerCase().includes(q));
+  document.getElementById('constList').innerHTML = list.length ? list.map(c=>`
+    <div class="const-row">
+      <div><span class="const-name">${c.name}</span><span class="const-sym">${c.sym}</span></div>
+      <div class="const-val">${c.val} ${c.unit}</div>
+    </div>`).join('') : '<div class="empty">Sin resultados.</div>';
+}
+document.getElementById('constSearch').addEventListener('input', renderLabConstants);
+
+const FORMULAS = {
+  'Cinemática':[
+    {id:'k1', expr:'v = v₀ + a·t', desc:'Velocidad en MRUV'},
+    {id:'k2', expr:'x = x₀ + v₀·t + ½·a·t²', desc:'Posición en MRUV'},
+    {id:'k3', expr:'v² = v₀² + 2·a·Δx', desc:'Relación velocidad-desplazamiento'},
+    {id:'k4', expr:'x = x₀ + v·t', desc:'Posición en MRU'},
+  ],
+  'Dinámica':[
+    {id:'d1', expr:'F = m·a', desc:'Segunda ley de Newton'},
+    {id:'d2', expr:'p = m·v', desc:'Cantidad de movimiento (momento lineal)'},
+    {id:'d3', expr:'Fr = μ·N', desc:'Fuerza de rozamiento'},
+    {id:'d4', expr:'F = G·m₁·m₂/r²', desc:'Ley de gravitación universal'},
+  ],
+  'Trabajo y energía':[
+    {id:'e1', expr:'W = F·d·cos θ', desc:'Trabajo mecánico'},
+    {id:'e2', expr:'Ec = ½·m·v²', desc:'Energía cinética'},
+    {id:'e3', expr:'Ep = m·g·h', desc:'Energía potencial gravitatoria'},
+    {id:'e4', expr:'P = W/t', desc:'Potencia'},
+  ],
+  'Electricidad':[
+    {id:'el1', expr:'V = I·R', desc:'Ley de Ohm'},
+    {id:'el2', expr:'P = V·I', desc:'Potencia eléctrica'},
+    {id:'el3', expr:'F = k·q₁·q₂/r²', desc:'Ley de Coulomb'},
+    {id:'el4', expr:'C = Q/V', desc:'Capacitancia'},
+  ],
+  'Ondas y termodinámica':[
+    {id:'o1', expr:'v = λ·f', desc:'Velocidad de propagación de una onda'},
+    {id:'o2', expr:'Q = m·c·ΔT', desc:'Calor sensible'},
+    {id:'o3', expr:'PV = nRT', desc:'Ecuación de estado del gas ideal'},
+  ],
+};
+let favorites = [];
+let showOnlyFav = false;
+async function loadFavorites(){ favorites = await sGet('lab-favorites', []); }
+function renderFormulas(){
+  const el = document.getElementById('formulasList');
+  let html = '';
+  Object.entries(FORMULAS).forEach(([topic, items])=>{
+    const filtered = showOnlyFav ? items.filter(f=>favorites.includes(f.id)) : items;
+    if(!filtered.length) return;
+    html += `<div class="formula-group"><h4>${topic}</h4>` + filtered.map(f=>`
+      <div class="formula-card">
+        <div>
+          <div class="formula-expr">${f.expr}</div>
+          <div class="formula-desc">${f.desc}</div>
+        </div>
+        <button class="star-btn ${favorites.includes(f.id)?'on':''}" onclick="toggleFav('${f.id}')">★</button>
+      </div>`).join('') + `</div>`;
+  });
+  el.innerHTML = html || '<div class="empty">Sin favoritas todavía. Tocá la estrella de una fórmula para guardarla.</div>';
+}
+window.toggleFav = async function(id){
+  if(favorites.includes(id)) favorites = favorites.filter(x=>x!==id);
+  else favorites.push(id);
+  await sSet('lab-favorites', favorites);
+  renderFormulas();
+};
+document.getElementById('favFilterBtn').addEventListener('click', ()=>{
+  showOnlyFav = !showOnlyFav;
+  document.getElementById('favFilterBtn').textContent = showOnlyFav ? '⭐ Ver todas' : '⭐ Ver solo favoritas';
+  renderFormulas();
+});
+
+/* Las 16 fórmulas de cálculo más importantes */
+const CALC_FORMULAS = [
+  {topic:'Derivadas básicas', items:[
+    {expr:"d/dx(xⁿ) = n·xⁿ⁻¹", desc:'Regla de la potencia — "baja el exponente"'},
+    {expr:'d/dx(c) = 0', desc:'Derivada de una constante'},
+    {expr:"d/dx[f(x)+g(x)] = f'(x)+g'(x)", desc:'Regla de la suma — deriva término a término'},
+    {expr:"d/dx(eˣ) = eˣ", desc:'Derivada exponencial — nunca cambia'},
+  ]},
+  {topic:'Reglas de derivación', items:[
+    {expr:"(f·g)' = f'g + fg'", desc:'Regla del producto — multiplica y deriva'},
+    {expr:"(f/g)' = (f'g - fg')/g²", desc:'Regla del cociente — deriva arriba y abajo'},
+    {expr:"d/dx[f(g(x))] = f'(g(x))·g'(x)", desc:'Regla de la cadena — función dentro de otra función'},
+    {expr:'d/dx(ln x) = 1/x', desc:'Derivada del logaritmo natural'},
+  ]},
+  {topic:'Derivadas trigonométricas', items:[
+    {expr:'d/dx(sen x) = cos x', desc:'Derivada del seno'},
+    {expr:'d/dx(cos x) = -sen x', desc:'Derivada del coseno'},
+    {expr:'d/dx(tan x) = sec²x', desc:'Derivada de la tangente'},
+    {expr:'d/dx(sec x) = sec x·tan x', desc:'Derivada de la secante'},
+  ]},
+  {topic:'Integrales básicas', items:[
+    {expr:'∫xⁿ dx = xⁿ⁺¹/(n+1) + C', desc:'Integral de potencia — suma 1 y divide'},
+    {expr:'∫eˣ dx = eˣ + C', desc:'Integral exponencial — nunca cambia'},
+    {expr:'∫sen x dx = -cos x + C', desc:'Integral del seno'},
+    {expr:'∫(1/x) dx = ln|x| + C', desc:'Integral de 1/x — logaritmo natural'},
+  ]},
+];
+function renderCalcFormulas(){
+  document.getElementById('calcFormulasList').innerHTML = CALC_FORMULAS.map(g => `
+    <div class="formula-group"><h4>${g.topic}</h4>` + g.items.map(f=>`
+      <div class="formula-card">
+        <div>
+          <div class="formula-expr">${f.expr}</div>
+          <div class="formula-desc">${f.desc}</div>
+        </div>
+      </div>`).join('') + `</div>`
+  ).join('');
+}
+
+/* Unit converter */
+const UNIT_CATEGORIES = {
+  'Longitud': {base:'m', units:{'m':1, 'km':1000, 'cm':0.01, 'mm':0.001, 'mi':1609.34, 'ft':0.3048, 'in':0.0254}},
+  'Masa': {base:'kg', units:{'kg':1, 'g':0.001, 'mg':0.000001, 'ton':1000, 'lb':0.453592}},
+  'Tiempo': {base:'s', units:{'s':1, 'min':60, 'h':3600, 'día':86400}},
+  'Velocidad': {base:'m/s', units:{'m/s':1, 'km/h':0.277778, 'mi/h':0.44704}},
+  'Fuerza': {base:'N', units:{'N':1, 'kN':1000, 'dyn':0.00001, 'kgf':9.80665}},
+  'Energía': {base:'J', units:{'J':1, 'kJ':1000, 'cal':4.184, 'kcal':4184, 'eV':1.602e-19}},
+  'Presión': {base:'Pa', units:{'Pa':1, 'kPa':1000, 'atm':101325, 'bar':100000, 'mmHg':133.322}},
+};
+const SI_PREFIXES = [
+  ['yotta','Y','10²⁴','1 000 000 000 000 000 000 000 000'],
+  ['zetta','Z','10²¹','1 000 000 000 000 000 000 000'],
+  ['exa','E','10¹⁸','1 000 000 000 000 000 000'],
+  ['peta','P','10¹⁵','1 000 000 000 000 000'],
+  ['tera','T','10¹²','1 000 000 000 000'],
+  ['giga','G','10⁹','1 000 000 000'],
+  ['mega','M','10⁶','1 000 000'],
+  ['kilo','k','10³','1 000'],
+  ['hecto','h','10²','100'],
+  ['deca','da','10¹','10'],
+  ['(unidad)','-','10⁰','1'],
+  ['deci','d','10⁻¹','0,1'],
+  ['centi','c','10⁻²','0,01'],
+  ['mili','m','10⁻³','0,001'],
+  ['micro','μ','10⁻⁶','0,000001'],
+  ['nano','n','10⁻⁹','0,000000001'],
+  ['pico','p','10⁻¹²','10⁻¹²'],
+  ['femto','f','10⁻¹⁵','10⁻¹⁵'],
+  ['atto','a','10⁻¹⁸','10⁻¹⁸'],
+  ['zepto','z','10⁻²¹','10⁻²¹'],
+  ['yocto','y','10⁻²⁴','10⁻²⁴'],
+];
+function renderSiPrefixes(){
+  document.getElementById('siPrefixTable').innerHTML = SI_PREFIXES.map(([name,sym,factor,val])=>`
+    <div class="law-row" style="grid-template-columns:1fr 0.6fr 0.6fr 1.4fr;">
+      <div>${name}</div><div class="mono-data" style="color:var(--cyan);">${sym}</div><div class="mono-data">${factor}</div><div class="mono-data" style="color:var(--text-dim); font-size:11px;">${val}</div>
+    </div>
+  `).join('');
+}
+function populateConverter(){
+  const catSel = document.getElementById('convCategory');
+  catSel.innerHTML = Object.keys(UNIT_CATEGORIES).map(c=>`<option>${c}</option>`).join('') + '<option>Temperatura</option>';
+  updateConvUnits();
+}
+function updateConvUnits(){
+  const cat = document.getElementById('convCategory').value;
+  const fromSel = document.getElementById('convFrom'), toSel = document.getElementById('convTo');
+  let units;
+  if(cat==='Temperatura'){ units = ['°C','°F','K']; }
+  else{ units = Object.keys(UNIT_CATEGORIES[cat].units); }
+  fromSel.innerHTML = units.map(u=>`<option>${u}</option>`).join('');
+  toSel.innerHTML = units.map((u,i)=>`<option ${i===1?'selected':''}>${u}</option>`).join('');
+  computeConversion();
+}
+function tempToC(v,u){ if(u==='°C') return v; if(u==='°F') return (v-32)*5/9; if(u==='K') return v-273.15; }
+function cToTemp(c,u){ if(u==='°C') return c; if(u==='°F') return c*9/5+32; if(u==='K') return c+273.15; }
+function computeConversion(){
+  const cat = document.getElementById('convCategory').value;
+  const val = parseFloat(document.getElementById('convValue').value);
+  const from = document.getElementById('convFrom').value, to = document.getElementById('convTo').value;
+  const out = document.getElementById('convResult');
+  if(isNaN(val)){ out.textContent = '--'; return; }
+  let result;
+  if(cat==='Temperatura'){ result = cToTemp(tempToC(val, from), to); }
+  else{
+    const u = UNIT_CATEGORIES[cat].units;
+    const base = val * u[from];
+    result = base / u[to];
+  }
+  out.textContent = `${val} ${from} = ${Number(result.toPrecision(6))} ${to}`;
+}
+['convCategory'].forEach(id=>document.getElementById(id).addEventListener('change', updateConvUnits));
+['convFrom','convTo','convValue'].forEach(id=>document.getElementById(id).addEventListener('input', computeConversion));
+
+document.querySelectorAll('#subject-fisica .lab-tab').forEach(tab=>{
+  tab.addEventListener('click', ()=>{
+    document.querySelectorAll('#subject-fisica .lab-tab').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('#subject-fisica .lab-panel').forEach(p=>p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('lab-'+tab.dataset.lab).classList.add('active');
+  });
+});
+document.querySelectorAll('#subject-mate .lab-tab').forEach(tab=>{
+  tab.addEventListener('click', ()=>{
+    document.querySelectorAll('#subject-mate .lab-tab').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('#subject-mate .lab-panel').forEach(p=>p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('mate-'+tab.dataset.mate).classList.add('active');
+    if(tab.dataset.mate==='graph') drawGraph();
+  });
+});
+document.querySelectorAll('#subject-quimica .lab-tab').forEach(tab=>{
+  tab.addEventListener('click', ()=>{
+    document.querySelectorAll('#subject-quimica .lab-tab').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('#subject-quimica .lab-panel').forEach(p=>p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('quim-'+tab.dataset.quim).classList.add('active');
+  });
+});
+document.querySelectorAll('.lab-subject-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.lab-subject-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.lab-subject-panel').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('subject-'+btn.dataset.subject).classList.add('active');
+    if(btn.dataset.subject==='mate') drawGraph();
+    if(btn.dataset.subject==='quimica') renderElementGrid();
+  });
+});
+
+/* ================= LABORATORIO: QUÍMICA ================= */
+const PERIODIC_TABLE = [
+  {z:1,sym:"H",name:"Hidrógeno",mass:1.01,cat:"nonmetal",en:2.2},
+  {z:2,sym:"He",name:"Helio",mass:4.0,cat:"noble",en:null},
+  {z:3,sym:"Li",name:"Litio",mass:6.94,cat:"alkali",en:0.98},
+  {z:4,sym:"Be",name:"Berilio",mass:9.01,cat:"alkaline",en:1.57},
+  {z:5,sym:"B",name:"Boro",mass:10.81,cat:"metalloid",en:2.04},
+  {z:6,sym:"C",name:"Carbono",mass:12.01,cat:"nonmetal",en:2.55},
+  {z:7,sym:"N",name:"Nitrógeno",mass:14.01,cat:"nonmetal",en:3.04},
+  {z:8,sym:"O",name:"Oxígeno",mass:16.0,cat:"nonmetal",en:3.44},
+  {z:9,sym:"F",name:"Flúor",mass:19.0,cat:"halogen",en:3.98},
+  {z:10,sym:"Ne",name:"Neón",mass:20.18,cat:"noble",en:null},
+  {z:11,sym:"Na",name:"Sodio",mass:22.99,cat:"alkali",en:0.93},
+  {z:12,sym:"Mg",name:"Magnesio",mass:24.31,cat:"alkaline",en:1.31},
+  {z:13,sym:"Al",name:"Aluminio",mass:26.98,cat:"post",en:1.61},
+  {z:14,sym:"Si",name:"Silicio",mass:28.09,cat:"metalloid",en:1.9},
+  {z:15,sym:"P",name:"Fósforo",mass:30.97,cat:"nonmetal",en:2.19},
+  {z:16,sym:"S",name:"Azufre",mass:32.07,cat:"nonmetal",en:2.58},
+  {z:17,sym:"Cl",name:"Cloro",mass:35.45,cat:"halogen",en:3.16},
+  {z:18,sym:"Ar",name:"Argón",mass:39.95,cat:"noble",en:null},
+  {z:19,sym:"K",name:"Potasio",mass:39.1,cat:"alkali",en:0.82},
+  {z:20,sym:"Ca",name:"Calcio",mass:40.08,cat:"alkaline",en:1.0},
+  {z:21,sym:"Sc",name:"Escandio",mass:44.96,cat:"transition",en:1.36},
+  {z:22,sym:"Ti",name:"Titanio",mass:47.87,cat:"transition",en:1.54},
+  {z:23,sym:"V",name:"Vanadio",mass:50.94,cat:"transition",en:1.63},
+  {z:24,sym:"Cr",name:"Cromo",mass:52.0,cat:"transition",en:1.66},
+  {z:25,sym:"Mn",name:"Manganeso",mass:54.94,cat:"transition",en:1.55},
+  {z:26,sym:"Fe",name:"Hierro",mass:55.85,cat:"transition",en:1.83},
+  {z:27,sym:"Co",name:"Cobalto",mass:58.93,cat:"transition",en:1.88},
+  {z:28,sym:"Ni",name:"Níquel",mass:58.69,cat:"transition",en:1.91},
+  {z:29,sym:"Cu",name:"Cobre",mass:63.55,cat:"transition",en:1.9},
+  {z:30,sym:"Zn",name:"Zinc",mass:65.38,cat:"transition",en:1.65},
+  {z:31,sym:"Ga",name:"Galio",mass:69.72,cat:"post",en:1.81},
+  {z:32,sym:"Ge",name:"Germanio",mass:72.63,cat:"metalloid",en:2.01},
+  {z:33,sym:"As",name:"Arsénico",mass:74.92,cat:"metalloid",en:2.18},
+  {z:34,sym:"Se",name:"Selenio",mass:78.97,cat:"nonmetal",en:2.55},
+  {z:35,sym:"Br",name:"Bromo",mass:79.9,cat:"halogen",en:2.96},
+  {z:36,sym:"Kr",name:"Kriptón",mass:83.8,cat:"noble",en:3.0},
+  {z:37,sym:"Rb",name:"Rubidio",mass:85.47,cat:"alkali",en:0.82},
+  {z:38,sym:"Sr",name:"Estroncio",mass:87.62,cat:"alkaline",en:0.95},
+  {z:39,sym:"Y",name:"Itrio",mass:88.91,cat:"transition",en:1.22},
+  {z:40,sym:"Zr",name:"Zirconio",mass:91.22,cat:"transition",en:1.33},
+  {z:41,sym:"Nb",name:"Niobio",mass:92.91,cat:"transition",en:1.6},
+  {z:42,sym:"Mo",name:"Molibdeno",mass:95.95,cat:"transition",en:2.16},
+  {z:43,sym:"Tc",name:"Tecnecio",mass:98,cat:"transition",en:1.9},
+  {z:44,sym:"Ru",name:"Rutenio",mass:101.07,cat:"transition",en:2.2},
+  {z:45,sym:"Rh",name:"Rodio",mass:102.91,cat:"transition",en:2.28},
+  {z:46,sym:"Pd",name:"Paladio",mass:106.42,cat:"transition",en:2.2},
+  {z:47,sym:"Ag",name:"Plata",mass:107.87,cat:"transition",en:1.93},
+  {z:48,sym:"Cd",name:"Cadmio",mass:112.41,cat:"transition",en:1.69},
+  {z:49,sym:"In",name:"Indio",mass:114.82,cat:"post",en:1.78},
+  {z:50,sym:"Sn",name:"Estaño",mass:118.71,cat:"post",en:1.96},
+  {z:51,sym:"Sb",name:"Antimonio",mass:121.76,cat:"metalloid",en:2.05},
+  {z:52,sym:"Te",name:"Telurio",mass:127.6,cat:"metalloid",en:2.1},
+  {z:53,sym:"I",name:"Yodo",mass:126.9,cat:"halogen",en:2.66},
+  {z:54,sym:"Xe",name:"Xenón",mass:131.29,cat:"noble",en:2.6},
+  {z:55,sym:"Cs",name:"Cesio",mass:132.91,cat:"alkali",en:0.79},
+  {z:56,sym:"Ba",name:"Bario",mass:137.33,cat:"alkaline",en:0.89},
+  {z:57,sym:"La",name:"Lantano",mass:138.91,cat:"lanthanide",en:1.1},
+  {z:58,sym:"Ce",name:"Cerio",mass:140.12,cat:"lanthanide",en:1.12},
+  {z:59,sym:"Pr",name:"Praseodimio",mass:140.91,cat:"lanthanide",en:1.13},
+  {z:60,sym:"Nd",name:"Neodimio",mass:144.24,cat:"lanthanide",en:1.14},
+  {z:61,sym:"Pm",name:"Prometio",mass:145,cat:"lanthanide",en:null},
+  {z:62,sym:"Sm",name:"Samario",mass:150.36,cat:"lanthanide",en:1.17},
+  {z:63,sym:"Eu",name:"Europio",mass:151.96,cat:"lanthanide",en:null},
+  {z:64,sym:"Gd",name:"Gadolinio",mass:157.25,cat:"lanthanide",en:1.2},
+  {z:65,sym:"Tb",name:"Terbio",mass:158.93,cat:"lanthanide",en:null},
+  {z:66,sym:"Dy",name:"Disprosio",mass:162.5,cat:"lanthanide",en:1.22},
+  {z:67,sym:"Ho",name:"Holmio",mass:164.93,cat:"lanthanide",en:1.23},
+  {z:68,sym:"Er",name:"Erbio",mass:167.26,cat:"lanthanide",en:1.24},
+  {z:69,sym:"Tm",name:"Tulio",mass:168.93,cat:"lanthanide",en:1.25},
+  {z:70,sym:"Yb",name:"Iterbio",mass:173.05,cat:"lanthanide",en:null},
+  {z:71,sym:"Lu",name:"Lutecio",mass:174.97,cat:"lanthanide",en:1.27},
+  {z:72,sym:"Hf",name:"Hafnio",mass:178.49,cat:"transition",en:1.3},
+  {z:73,sym:"Ta",name:"Tántalo",mass:180.95,cat:"transition",en:1.5},
+  {z:74,sym:"W",name:"Wolframio",mass:183.84,cat:"transition",en:2.36},
+  {z:75,sym:"Re",name:"Renio",mass:186.21,cat:"transition",en:1.9},
+  {z:76,sym:"Os",name:"Osmio",mass:190.23,cat:"transition",en:2.2},
+  {z:77,sym:"Ir",name:"Iridio",mass:192.22,cat:"transition",en:2.2},
+  {z:78,sym:"Pt",name:"Platino",mass:195.08,cat:"transition",en:2.28},
+  {z:79,sym:"Au",name:"Oro",mass:196.97,cat:"transition",en:2.54},
+  {z:80,sym:"Hg",name:"Mercurio",mass:200.59,cat:"transition",en:2.0},
+  {z:81,sym:"Tl",name:"Talio",mass:204.38,cat:"post",en:1.62},
+  {z:82,sym:"Pb",name:"Plomo",mass:207.2,cat:"post",en:2.33},
+  {z:83,sym:"Bi",name:"Bismuto",mass:208.98,cat:"post",en:2.02},
+  {z:84,sym:"Po",name:"Polonio",mass:209,cat:"post",en:2.0},
+  {z:85,sym:"At",name:"Astato",mass:210,cat:"halogen",en:2.2},
+  {z:86,sym:"Rn",name:"Radón",mass:222,cat:"noble",en:null},
+  {z:87,sym:"Fr",name:"Francio",mass:223,cat:"alkali",en:0.7},
+  {z:88,sym:"Ra",name:"Radio",mass:226,cat:"alkaline",en:0.9},
+  {z:89,sym:"Ac",name:"Actinio",mass:227,cat:"actinide",en:1.1},
+  {z:90,sym:"Th",name:"Torio",mass:232.04,cat:"actinide",en:1.3},
+  {z:91,sym:"Pa",name:"Protactinio",mass:231.04,cat:"actinide",en:1.5},
+  {z:92,sym:"U",name:"Uranio",mass:238.03,cat:"actinide",en:1.38},
+  {z:93,sym:"Np",name:"Neptunio",mass:237,cat:"actinide",en:1.36},
+  {z:94,sym:"Pu",name:"Plutonio",mass:244,cat:"actinide",en:1.28},
+  {z:95,sym:"Am",name:"Americio",mass:243,cat:"actinide",en:1.3},
+  {z:96,sym:"Cm",name:"Curio",mass:247,cat:"actinide",en:1.3},
+  {z:97,sym:"Bk",name:"Berkelio",mass:247,cat:"actinide",en:1.3},
+  {z:98,sym:"Cf",name:"Californio",mass:251,cat:"actinide",en:1.3},
+  {z:99,sym:"Es",name:"Einstenio",mass:252,cat:"actinide",en:1.3},
+  {z:100,sym:"Fm",name:"Fermio",mass:257,cat:"actinide",en:1.3},
+  {z:101,sym:"Md",name:"Mendelevio",mass:258,cat:"actinide",en:1.3},
+  {z:102,sym:"No",name:"Nobelio",mass:259,cat:"actinide",en:1.3},
+  {z:103,sym:"Lr",name:"Lawrencio",mass:262,cat:"actinide",en:null},
+  {z:104,sym:"Rf",name:"Rutherfordio",mass:267,cat:"transition",en:null},
+  {z:105,sym:"Db",name:"Dubnio",mass:270,cat:"transition",en:null},
+  {z:106,sym:"Sg",name:"Seaborgio",mass:269,cat:"transition",en:null},
+  {z:107,sym:"Bh",name:"Bohrio",mass:270,cat:"transition",en:null},
+  {z:108,sym:"Hs",name:"Hasio",mass:270,cat:"transition",en:null},
+  {z:109,sym:"Mt",name:"Meitnerio",mass:278,cat:"transition",en:null},
+  {z:110,sym:"Ds",name:"Darmstadtio",mass:281,cat:"transition",en:null},
+  {z:111,sym:"Rg",name:"Roentgenio",mass:282,cat:"transition",en:null},
+  {z:112,sym:"Cn",name:"Copernicio",mass:285,cat:"transition",en:null},
+  {z:113,sym:"Nh",name:"Nihonio",mass:286,cat:"post",en:null},
+  {z:114,sym:"Fl",name:"Flerovio",mass:289,cat:"post",en:null},
+  {z:115,sym:"Mc",name:"Moscovio",mass:290,cat:"post",en:null},
+  {z:116,sym:"Lv",name:"Livermorio",mass:293,cat:"post",en:null},
+  {z:117,sym:"Ts",name:"Teneso",mass:294,cat:"halogen",en:null},
+  {z:118,sym:"Og",name:"Oganesón",mass:294,cat:"noble",en:null},
+];
+
+const CAT_LABELS = {alkali:'Alcalino', alkaline:'Alcalinotérreo', transition:'Transición',
+  post:'Post-transición', metalloid:'Metaloide', nonmetal:'No metal', halogen:'Halógeno',
+  noble:'Gas noble', lanthanide:'Lantánido', actinide:'Actínido'};
+
+const TRENDS = [
+  {name:'Electronegatividad', period:'aumenta', group:'disminuye'},
+  {name:'Radio atómico', period:'disminuye', group:'aumenta'},
+  {name:'Energía de ionización', period:'aumenta', group:'disminuye'},
+  {name:'Afinidad electrónica', period:'aumenta', group:'disminuye'},
+];
+const OCTET_EXCEPTIONS = [
+  ['H','Hidrógeno','2 electrones'],
+  ['Be','Berilio','4 electrones'],
+  ['B','Boro','6 electrones'],
+  ['P','Fósforo','hasta 10 electrones'],
+  ['S','Azufre','hasta 10 electrones'],
+  ['Si','Silicio','hasta 10 electrones'],
+];
+function renderOctet(){
+  document.getElementById('octetTable').innerHTML = OCTET_EXCEPTIONS.map(([sym,name,rule])=>`
+    <div class="law-row" style="grid-template-columns:0.5fr 1fr 1.3fr;">
+      <div class="mono-data" style="color:var(--cyan); font-weight:700;">${sym}</div><div>${name}</div><div style="color:var(--text-dim);">${rule}</div>
+    </div>
+  `).join('');
+}
+function renderTrends(){
+  document.getElementById('trendsTable').innerHTML = TRENDS.map(t=>`
+    <div class="trend-row">
+      <div class="trend-name">${t.name}</div>
+      <div class="trend-badge trend-${t.period==='aumenta'?'up':'down'}">→ período: ${t.period}</div>
+      <div class="trend-badge trend-${t.group==='aumenta'?'up':'down'}">↓ grupo: ${t.group}</div>
+    </div>
+  `).join('');
+}
+
+/* Orden de llenado (regla de Madelung) */
+const SUBSHELL_ORDER = [
+  [1,'s',2],[2,'s',2],[2,'p',6],[3,'s',2],[3,'p',6],[4,'s',2],[3,'d',10],[4,'p',6],
+  [5,'s',2],[4,'d',10],[5,'p',6],[6,'s',2],[4,'f',14],[5,'d',10],[6,'p',6],
+  [7,'s',2],[5,'f',14],[6,'d',10],[7,'p',6]
+];
+const SUP = {0:'⁰',1:'¹',2:'²',3:'³',4:'⁴',5:'⁵',6:'⁶',7:'⁷',8:'⁸',9:'⁹',10:'¹⁰',11:'¹¹',12:'¹²',13:'¹³',14:'¹⁴'};
+function electronConfig(Z){
+  let remaining = Z;
+  const filled = [];
+  for(const [n,l,cap] of SUBSHELL_ORDER){
+    if(remaining<=0) break;
+    const count = Math.min(cap, remaining);
+    filled.push({n,l,count});
+    remaining -= count;
+  }
+  const full = filled.map(f=>`${f.n}${f.l}${SUP[f.count]}`).join(' ');
+  const maxN = Math.max(...filled.map(f=>f.n));
+  const external = filled.filter(f=>f.n===maxN).map(f=>`${f.n}${f.l}${SUP[f.count]}`).join(' ');
+  return {full, external};
+}
+
+function renderElementGrid(){
+  const q = (document.getElementById('elementSearch').value||'').toLowerCase();
+  const grid = document.getElementById('elementGrid');
+  const list = PERIODIC_TABLE.filter(e =>
+    e.name.toLowerCase().includes(q) || e.sym.toLowerCase().includes(q) || String(e.z)===q
+  );
+  grid.innerHTML = list.map(e => `
+    <div class="element-cell cat-${e.cat}" onclick="showElement(${e.z})">
+      <span class="z">${e.z}</span>
+      <span class="sym">${e.sym}</span>
+      <span class="mass">${e.mass}</span>
+    </div>
+  `).join('');
+}
+document.getElementById('elementSearch').addEventListener('input', renderElementGrid);
+
+window.showElement = function(z){
+  const e = PERIODIC_TABLE.find(el=>el.z===z);
+  const cfg = electronConfig(z);
+  openModal(`
+    <h3 style="margin-bottom:4px;">${e.name} (${e.sym})</h3>
+    <div style="font-size:12px; color:var(--text-dim); margin-bottom:14px;">${CAT_LABELS[e.cat]}</div>
+    <div class="subj-detail" style="grid-template-columns:1fr 1fr; margin-bottom:14px;">
+      <div>Número atómico: ${e.z}</div>
+      <div>Masa atómica: ${e.mass} u</div>
+      <div>Electronegatividad: ${e.en!==null ? e.en+' (Pauling)' : 'No definida'}</div>
+    </div>
+    <label>Configuración electrónica completa</label>
+    <div class="mono-data" style="font-size:13px; color:var(--cyan); margin:4px 0 12px;">${cfg.full}</div>
+    <label>Configuración electrónica externa (capa de valencia)</label>
+    <div class="mono-data" style="font-size:14px; color:var(--green); margin:4px 0 16px;">${cfg.external}</div>
+    <button class="btn ghost" onclick="closeModal()">Cerrar</button>
+  `);
+};
+
+/* ---- Parser de fórmulas químicas: H2O, Fe2(SO4)3, etc. ---- */
+function parseFormula(str){
+  let i = 0;
+  const s = str.replace(/\s+/g,'');
+  function parseCount(){
+    let start = i;
+    while(i<s.length && /[0-9]/.test(s[i])) i++;
+    return start===i ? 1 : parseInt(s.slice(start,i));
+  }
+  function parseGroup(){
+    const counts = {};
+    while(i < s.length && s[i] !== ')'){
+      if(s[i] === '('){
+        i++;
+        const inner = parseGroup();
+        if(s[i] !== ')') throw new Error('Falta cerrar paréntesis');
+        i++;
+        const mult = parseCount();
+        for(const el in inner) counts[el] = (counts[el]||0) + inner[el]*mult;
+      } else if(/[A-Z]/.test(s[i])){
+        let start = i; i++;
+        while(i<s.length && /[a-z]/.test(s[i])) i++;
+        const sym = s.slice(start,i);
+        const n = parseCount();
+        counts[sym] = (counts[sym]||0) + n;
+      } else {
+        throw new Error('Carácter inesperado: "'+s[i]+'"');
+      }
+    }
+    return counts;
+  }
+  const result = parseGroup();
+  if(i < s.length) throw new Error('Fórmula inválida');
+  return result;
+}
+function molarMass(counts){
+  let total = 0;
+  for(const sym in counts){
+    const el = PERIODIC_TABLE.find(e=>e.sym===sym);
+    if(!el) throw new Error('Elemento desconocido: '+sym);
+    total += el.mass * counts[sym];
+  }
+  return total;
+}
+
+let currentMolarMass = null;
+function updateMolarMass(){
+  const formula = document.getElementById('molarFormula').value.trim();
+  const out = document.getElementById('molarMassResult');
+  if(!formula){ out.textContent='--'; currentMolarMass=null; return; }
+  try{
+    const counts = parseFormula(formula);
+    currentMolarMass = molarMass(counts);
+    out.textContent = `M = ${currentMolarMass.toFixed(2)} g/mol`;
+  }catch(e){ out.textContent = 'Fórmula inválida'; currentMolarMass = null; }
+}
+document.getElementById('molarFormula').addEventListener('input', updateMolarMass);
+document.getElementById('molarGrams').addEventListener('input', ()=>{
+  if(!currentMolarMass) return;
+  const g = parseFloat(document.getElementById('molarGrams').value);
+  if(!isNaN(g)) document.getElementById('molarMoles').value = Number((g/currentMolarMass).toPrecision(6));
+});
+document.getElementById('molarMoles').addEventListener('input', ()=>{
+  if(!currentMolarMass) return;
+  const mol = parseFloat(document.getElementById('molarMoles').value);
+  if(!isNaN(mol)) document.getElementById('molarGrams').value = Number((mol*currentMolarMass).toPrecision(6));
+});
+
+/* ---- Balanceador de ecuaciones (eliminación gaussiana racional) ---- */
+class Frac{
+  constructor(n,d=1){ if(d<0){n=-n;d=-d;} const g=Frac.gcd(Math.abs(n),Math.abs(d))||1; this.n=n/g; this.d=d/g; }
+  static gcd(a,b){ while(b){ [a,b]=[b,a%b]; } return a; }
+  add(o){ return new Frac(this.n*o.d + o.n*this.d, this.d*o.d); }
+  sub(o){ return new Frac(this.n*o.d - o.n*this.d, this.d*o.d); }
+  mul(o){ return new Frac(this.n*o.n, this.d*o.d); }
+  div(o){ return new Frac(this.n*o.d, this.d*o.n); }
+  isZero(){ return this.n===0; }
+}
+function balanceEquation(eqStr){
+  const arrow = eqStr.includes('->') ? '->' : (eqStr.includes('=') ? '=' : null);
+  if(!arrow) throw new Error('Usá "->" para separar reactivos y productos');
+  const [leftStr, rightStr] = eqStr.split(arrow);
+  const reactants = leftStr.split('+').map(s=>s.trim()).filter(Boolean);
+  const products = rightStr.split('+').map(s=>s.trim()).filter(Boolean);
+  const species = [...reactants.map(f=>({f, sign:1})), ...products.map(f=>({f, sign:-1}))];
+  const parsed = species.map(sp => ({...sp, counts: parseFormula(sp.f)}));
+
+  const elements = [...new Set(parsed.flatMap(p=>Object.keys(p.counts)))];
+  const rows = elements.length, cols = parsed.length;
+  // Matrix: rows=elements, cols=species (with sign), augmented with zero col for homogeneous system
+  const M = [];
+  for(let r=0;r<rows;r++){
+    const row = [];
+    for(let c=0;c<cols;c++){
+      const el = elements[r];
+      const val = (parsed[c].counts[el]||0) * parsed[c].sign;
+      row.push(new Frac(val));
+    }
+    M.push(row);
+  }
+  // Gaussian elimination to row echelon form
+  let lead = 0;
+  for(let r=0; r<rows && lead<cols; r++){
+    let i = r;
+    while(i<rows && M[i][lead].isZero()) i++;
+    if(i===rows){ lead++; r--; continue; }
+    [M[r],M[i]] = [M[i],M[r]];
+    const lv = M[r][lead];
+    for(let c=0;c<cols;c++) M[r][c] = M[r][c].div(lv);
+    for(let i2=0;i2<rows;i2++){
+      if(i2===r) continue;
+      const f = M[i2][lead];
+      if(!f.isZero()) for(let c=0;c<cols;c++) M[i2][c] = M[i2][c].sub(f.mul(M[r][c]));
+    }
+    lead++;
+  }
+  // Free variable = last column (assume 1-dim null space); back-substitute
+  const freeCol = cols-1;
+  const coeffs = new Array(cols).fill(null);
+  coeffs[freeCol] = new Frac(1);
+  for(let r=rows-1;r>=0;r--){
+    let pivotCol = -1;
+    for(let c=0;c<cols;c++){ if(!M[r][c].isZero()){ pivotCol=c; break; } }
+    if(pivotCol===-1 || pivotCol===freeCol) continue;
+    let sum = new Frac(0);
+    for(let c=pivotCol+1;c<cols;c++){ if(coeffs[c]) sum = sum.add(M[r][c].mul(coeffs[c])); }
+    coeffs[pivotCol] = sum.mul(new Frac(-1)).div(M[r][pivotCol]);
+  }
+  for(let c=0;c<cols;c++) if(coeffs[c]===null) coeffs[c] = new Frac(0);
+
+  // scale to smallest positive integers
+  let denomLCM = 1;
+  function lcm(a,b){ return a/Frac.gcd(a,b)*b; }
+  coeffs.forEach(f => { denomLCM = lcm(denomLCM, f.d); });
+  let ints = coeffs.map(f => Math.round(f.n * denomLCM / f.d));
+  let g = ints.reduce((a,b)=>Frac.gcd(Math.abs(a),Math.abs(b)), 0) || 1;
+  ints = ints.map(v => v/g);
+  if(ints.some(v=>v<0)) ints = ints.map(v=>-v);
+  if(ints.some(v=>v<=0)) throw new Error('No se pudo balancear (revisá la ecuación)');
+
+  const rCoeffs = ints.slice(0, reactants.length);
+  const pCoeffs = ints.slice(reactants.length);
+  const left = reactants.map((f,idx)=> (rCoeffs[idx]>1?rCoeffs[idx]:'') + f).join(' + ');
+  const right = products.map((f,idx)=> (pCoeffs[idx]>1?pCoeffs[idx]:'') + f).join(' + ');
+  return `${left} → ${right}`;
+}
+document.getElementById('balanceBtn').addEventListener('click', ()=>{
+  const input = document.getElementById('balanceInput').value.trim();
+  const out = document.getElementById('balanceOutput');
+  if(!input){ out.textContent = 'Escribí una ecuación primero.'; return; }
+  try{
+    out.textContent = balanceEquation(input);
+  }catch(e){
+    out.textContent = 'No se pudo balancear: ' + e.message;
+  }
+});
+
+/* ================= LABORATORIO: MATEMÁTICA ================= */
+/* Safe math expression parser (recursive descent) — supports x, + - * / ^, parens,
+   sin cos tan sqrt log ln abs, pi, e. No eval() involved. */
+function parseExpr(str, xVal){
+  let i = 0;
+  const s = str.replace(/\s+/g,'');
+  function peek(){ return s[i]; }
+  function eat(ch){ if(s[i]!==ch) throw new Error('Se esperaba "'+ch+'"'); i++; }
+  function parseNumberOrIdent(){
+    // functions
+    const funcs = ['sin','cos','tan','sqrt','log','ln','abs'];
+    for(const f of funcs){
+      if(s.startsWith(f, i)){
+        i += f.length; eat('(');
+        const arg = parseAddSub();
+        eat(')');
+        switch(f){
+          case 'sin': return Math.sin(arg);
+          case 'cos': return Math.cos(arg);
+          case 'tan': return Math.tan(arg);
+          case 'sqrt': return Math.sqrt(arg);
+          case 'log': return Math.log10(arg);
+          case 'ln': return Math.log(arg);
+          case 'abs': return Math.abs(arg);
+        }
+      }
+    }
+    if(s.startsWith('pi', i)){ i+=2; return Math.PI; }
+    if(s.startsWith('e', i) && !/[a-zA-Z]/.test(s[i+1]||'')){ i+=1; return Math.E; }
+    if(s[i]==='x'){ i++; return xVal; }
+    if(s[i]==='('){ i++; const v = parseAddSub(); eat(')'); return v; }
+    let start = i;
+    while(i<s.length && /[0-9.]/.test(s[i])) i++;
+    if(start===i) throw new Error('Expresión inválida cerca de "'+s.slice(i,i+5)+'"');
+    return parseFloat(s.slice(start,i));
+  }
+  function parseUnary(){
+    if(s[i]==='-'){ i++; return -parseUnary(); }
+    if(s[i]==='+'){ i++; return parseUnary(); }
+    return parsePow();
+  }
+  function parsePow(){
+    let base = parseNumberOrIdent();
+    if(s[i]==='^'){ i++; const exp = parseUnary(); return Math.pow(base, exp); }
+    return base;
+  }
+  function parseMulDiv(){
+    let v = parseUnary();
+    while(s[i]==='*' || s[i]==='/'){
+      const op = s[i]; i++;
+      const rhs = parseUnary();
+      v = op==='*' ? v*rhs : v/rhs;
+    }
+    return v;
+  }
+  function parseAddSub(){
+    let v = parseMulDiv();
+    while(s[i]==='+' || s[i]==='-'){
+      const op = s[i]; i++;
+      const rhs = parseMulDiv();
+      v = op==='+' ? v+rhs : v-rhs;
+    }
+    return v;
+  }
+  const result = parseAddSub();
+  if(i < s.length) throw new Error('Carácter inesperado: "'+s[i]+'"');
+  return result;
+}
+
+/* Calculator */
+let calcExpr = '';
+function updateCalcDisplay(){ document.getElementById('calcDisplay').textContent = calcExpr || '0'; }
+document.querySelectorAll('#mate-calc .calc-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    const k = btn.dataset.k;
+    if(k==='C'){ calcExpr=''; }
+    else if(k==='⌫'){ calcExpr = calcExpr.slice(0,-1); }
+    else if(k==='='){
+      try{ const r = parseExpr(calcExpr, 0); calcExpr = String(Number(r.toPrecision(10))); }
+      catch(e){ calcExpr = 'Error'; }
+    }
+    else{ calcExpr += k; }
+    updateCalcDisplay();
+  });
+});
+
+/* Grapher */
+function drawGraph(){
+  const canvas = document.getElementById('graphCanvas');
+  if(!canvas) return;
+  const dpr = window.devicePixelRatio || 1;
+  const cssW = canvas.clientWidth || 300, cssH = 220;
+  canvas.width = cssW*dpr; canvas.height = cssH*dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr,dpr);
+  ctx.clearRect(0,0,cssW,cssH);
+  const fnStr = document.getElementById('graphFn').value || 'x';
+  const xMin=-10, xMax=10, yMin=-5, yMax=5;
+  const toPx = (x,y) => [ (x-xMin)/(xMax-xMin)*cssW, cssH - (y-yMin)/(yMax-yMin)*cssH ];
+  // axes
+  ctx.strokeStyle = 'rgba(120,200,255,0.25)'; ctx.lineWidth=1;
+  const [ox,oy] = toPx(0,0);
+  ctx.beginPath(); ctx.moveTo(0,oy); ctx.lineTo(cssW,oy); ctx.moveTo(ox,0); ctx.lineTo(ox,cssH); ctx.stroke();
+  // curve
+  ctx.strokeStyle = '#4df3ff'; ctx.lineWidth=2; ctx.beginPath();
+  let started = false;
+  for(let px=0; px<=cssW; px++){
+    const x = xMin + (px/cssW)*(xMax-xMin);
+    let y;
+    try{ y = parseExpr(fnStr, x); }catch(e){ started=false; continue; }
+    if(!isFinite(y) || Math.abs(y) > yMax*3){ started=false; continue; }
+    const [pxx,pyy] = toPx(x,y);
+    if(!started){ ctx.moveTo(pxx,pyy); started=true; } else ctx.lineTo(pxx,pyy);
+  }
+  ctx.stroke();
+}
+document.getElementById('graphFn').addEventListener('input', drawGraph);
+window.addEventListener('resize', ()=>{ if(document.getElementById('subject-mate').classList.contains('active')) drawGraph(); });
+
+/* Step-by-step derivative/integral explanations via Claude */
+async function explainCalc(kind){
+  const fn = document.getElementById('stepsFn').value.trim();
+  const out = document.getElementById('stepsOutput');
+  if(!fn){ out.textContent = 'Escribí una función primero.'; return; }
+  out.textContent = 'Analizando...';
+  try{
+    const reply = await callClaude(
+      `Sos QUARK, tutor de matemática para una estudiante de profesorado de Física en Argentina. Explicá en español rioplatense, paso a paso, breve y claro, usando notación simple de texto (sin LaTeX).`,
+      kind==='deriv' ? `Explicá paso a paso cómo derivar f(x) = ${fn}` : `Explicá paso a paso cómo integrar f(x) = ${fn}`
+    );
+    out.textContent = reply || 'No pude generar una explicación.';
+  }catch(e){ out.textContent = 'Error de conexión con la IA.'; }
+}
+document.getElementById('stepsDeriv').addEventListener('click', ()=>explainCalc('deriv'));
+document.getElementById('stepsInteg').addEventListener('click', ()=>explainCalc('integ'));
+
+
+/* ================= EDUCACIÓN Y TRANSFORMACIONES SOCIALES ================= */
+const GLOSARIO = [
+  {author:'Eliseo Verón', concept:'Contrato de lectura', desc:'La relación que un medio establece con su lector/audiencia a través de un conjunto de rasgos discursivos (qué promete decir y cómo). No es el contenido en sí, sino el vínculo que ese discurso propone con quien lo recibe.'},
+  {author:'Constanza Padilla', concept:'Lugar epistémico de enunciación', desc:'El punto de vista social, cultural e histórico desde el que alguien produce conocimiento o discurso. Ningún saber es neutral: siempre está situado en una posición particular frente al mundo.'},
+  {author:'Javier Zárate Pérez', concept:'Colonialidad del saber / del ser', desc:'La idea de que el colonialismo no terminó con la independencia política, sino que persiste en las jerarquías de conocimiento (qué se considera "saber válido") y en las formas de subjetividad que se imponen como superiores.'},
+  {author:'Catherine Walsh', concept:'Interculturalidad crítica', desc:'Propuesta que va más allá de "tolerar" la diversidad cultural: busca transformar las estructuras de poder que subordinan ciertos saberes y culturas frente a otros, construyendo relaciones más equitativas.'},
+  {author:'Teun van Dijk', concept:'Análisis crítico del discurso', desc:'Estudia cómo el lenguaje (en medios, política, educación) reproduce o desafía relaciones de poder, dominación y desigualdad social, prestando atención a lo que se dice y también a lo que se omite.'},
+  {author:'Silvina Gvirtz et al.', concept:'Prácticas reproductivas y productivas', desc:'Marco para pensar la enseñanza: las prácticas reproductivas repiten esquemas ya dados (memorización, aplicación mecánica), mientras las productivas invitan a construir conocimiento nuevo a partir de lo que el estudiante ya sabe.'},
+  {author:'Francisco J. Zimei', concept:'Pedagogía fundacional (ISFD N° 103)', desc:'Enfoque ligado a la fundación del Instituto Superior de Formación Docente N°103 de Lomas de Zamora, centrado en el compromiso social del rol docente y la educación como herramienta de transformación comunitaria.'},
+  {author:'Comenio (Jan Amos Comenius)', concept:'Didáctica Magna / Pansofía', desc:'Considerado el fundador de la pedagogía moderna (siglo XVII). Propuso enseñar "todo a todos" sin distinción de clase social o género, y defendió un método basado en los sentidos y en el orden natural del aprendizaje, en vez de la memorización mecánica.'},
+  {author:'Paulo Freire', concept:'Educación bancaria vs. educación liberadora', desc:'Crítica al modelo donde el docente "deposita" contenidos en un alumno pasivo (educación bancaria). Propone en cambio una pedagogía dialógica, donde enseñar y aprender es un proceso conjunto orientado a la concientización y la transformación de la realidad social del estudiante.'},
+];
+function renderGlosario(){
+  const q = (document.getElementById('glosarioSearch').value||'').toLowerCase();
+  const list = GLOSARIO.filter(g => g.author.toLowerCase().includes(q) || g.concept.toLowerCase().includes(q));
+  document.getElementById('glosarioList').innerHTML = list.length ? list.map(g=>`
+    <div class="author-card">
+      <div class="author-name">${g.author}</div>
+      <div class="author-concept">${g.concept}</div>
+      <div class="author-desc">${g.desc}</div>
+    </div>
+  `).join('') : '<div class="empty">Sin resultados.</div>';
+}
+document.getElementById('glosarioSearch').addEventListener('input', renderGlosario);
+
+const LEYES = {
+  headers: ['Aspecto', 'Ley 1420 (1884)', 'Ley 26.206 (2006)', 'Ley 26.061 (2005)'],
+  rows: [
+    ['Nombre', 'Ley de Educación Común', 'Ley de Educación Nacional', 'Protección Integral de NNyA'],
+    ['Alcance', 'Educación primaria', 'Todo el sistema educativo', 'Derechos de niños/as y adolescentes en general'],
+    ['Principios clave', 'Laica, gratuita, obligatoria, gradual', 'Educación como derecho social y bien público', 'Interés superior del niño, protección integral'],
+    ['Sujeto educativo', 'Alumno como receptor', 'Estudiante como sujeto de derecho', 'Niño/a como sujeto pleno de derechos, no "objeto de tutela"'],
+    ['Contexto histórico', 'Consolidación del Estado nacional', 'Post-crisis 2001, recuperación del rol del Estado', 'Adecuación a la Convención Internacional de los Derechos del Niño (1989)'],
+  ]
+};
+function renderLeyes(){
+  const el = document.getElementById('leyesTable');
+  let html = `<div class="law-row">${LEYES.headers.map(h=>`<div>${h}</div>`).join('')}</div>`;
+  LEYES.rows.forEach(r => {
+    html += `<div class="law-row"><div class="law-aspect">${r[0]}</div><div>${r[1]}</div><div>${r[2]}</div></div>`;
+    html += `<div class="law-row" style="grid-template-columns:1fr;"><div style="color:var(--green);">↳ Ley 26.061: ${r[3]}</div></div>`;
+  });
+  el.innerHTML = html;
+}
+
+document.getElementById('socExplainBtn').addEventListener('click', async ()=>{
+  const concept = document.getElementById('socConceptInput').value.trim();
+  const out = document.getElementById('socExplainOutput');
+  if(!concept){ out.textContent = 'Escribí un autor o concepto primero.'; return; }
+  out.textContent = 'Analizando...';
+  try{
+    const reply = await callClaude(
+      `Sos QUARK, tutor de Educación y Transformaciones Sociales Contemporáneas para una estudiante de profesorado de Física en Argentina. Explicá en español rioplatense, claro y breve (no más de 200 palabras), sin citas textuales largas.`,
+      `Explicame el concepto o autor: ${concept}`
+    );
+    out.textContent = reply || 'No pude generar una explicación.';
+  }catch(e){ out.textContent = e.message || 'Error de conexión con la IA.'; }
+});
+
+document.querySelectorAll('#view-sociales .lab-tab').forEach(tab=>{
+  tab.addEventListener('click', ()=>{
+    document.querySelectorAll('#view-sociales .lab-tab').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('#view-sociales .lab-panel').forEach(p=>p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('soc-'+tab.dataset.soc).classList.add('active');
+  });
+});
+
+/* ================= AI (Claude API) ================= */
+function taskContextSummary(){
+  const pending = STATE.tasks.filter(t=>!t.done);
+  return {
+    subjects: STATE.subjects.map(s=>({name:s.name, progress:s.progress})),
+    pendingTasks: pending.map(t=>({id:t.id, title:t.title, subject:t.subject, date:t.date, priority:t.priority, isExam:t.isExam})),
+    today: todayISO()
+  };
+}
+async function callClaude(systemPrompt, userPrompt){
+  const apiKey = (await sGet('settings-api-key', '')).replace(/\s+/g,'').trim();
+  const headers = {'Content-Type':'application/json'};
+  let model = 'claude-sonnet-4-6'; // ruta especial dentro de claude.ai, sin clave
+  if(apiKey){
+    headers['x-api-key'] = apiKey;
+    headers['anthropic-version'] = '2023-06-01';
+    headers['anthropic-dangerous-direct-browser-access'] = 'true';
+    model = 'claude-sonnet-5'; // modelo real para uso fuera de claude.ai, con tu propia clave
+  }
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method:'POST',
+    headers,
+    body: JSON.stringify({
+      model,
+      max_tokens:1000,
+      system: systemPrompt,
+      messages:[{role:'user', content:userPrompt}]
+    })
+  });
+  if(!res.ok){
+    if(res.status===401) throw new Error('Clave de API inválida o faltante. Cargala en Configuración.');
+    throw new Error('Error de la API ('+res.status+')');
+  }
+  const data = await res.json();
+  const text = (data.content||[]).map(b=>b.text||'').join('\n').trim();
+  return text;
+}
+function addMsg(role, text){
+  STATE.chat.push({role, text, ts:Date.now()});
+  saveChat();
+  renderChat();
+}
+function renderChat(){
+  const el = document.getElementById('chatLog');
+  el.innerHTML = STATE.chat.map(m=>`<div class="msg ${m.role}">${m.text.replace(/\n/g,'<br>')}</div>`).join('') || '<div class="msg system">Sin conversación todavía. Preguntale algo a QUARK.</div>';
+  el.scrollTop = el.scrollHeight;
+}
+document.getElementById('chatSend').addEventListener('click', sendChat);
+document.getElementById('chatInput').addEventListener('keydown', e=>{ if(e.key==='Enter') sendChat(); });
+async function sendChat(){
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  if(!text) return;
+  input.value='';
+  addMsg('user', text);
+  setThinking(true);
+  try{
+    const reply = await callClaude(
+      `Sos QUARK, la IA integrada de un planner académico para Sae, estudiante de profesorado de Física en Argentina. Respondé en español rioplatense, breve y claro, sin rodeos. Contexto de sus tareas y materias: ${JSON.stringify(taskContextSummary())}`,
+      text
+    );
+    addMsg('ai', reply || 'No pude generar una respuesta.');
+  }catch(e){
+    const msg = (e.message==='Failed to fetch')
+      ? 'No se pudo conectar. Revisá que la clave de API esté guardada sin espacios, y si usás Brave, probá desactivar los Shields para este sitio.'
+      : (e.message || 'Error de conexión con la IA.');
+    addMsg('system', msg);
+  }
+  setThinking(false);
+}
+function setThinking(on){ document.getElementById('aiCore').classList.toggle('thinking', on); }
+
+document.getElementById('qaExplain').addEventListener('click', ()=>{
+  document.getElementById('chatInput').value = 'Explicame ';
+  document.getElementById('chatInput').focus();
+});
+document.getElementById('qaSchedule').addEventListener('click', async ()=>{
+  addMsg('user', 'Armame un cronograma de estudio para mi próximo examen.');
+  setThinking(true);
+  try{
+    const reply = await callClaude(
+      `Sos QUARK. Con este contexto de tareas y materias: ${JSON.stringify(taskContextSummary())}, armá un cronograma de estudio breve (por día) para el próximo examen marcado como isExam. Si no hay ninguno, decilo y sugerí cargar uno. Español rioplatense, formato con viñetas cortas.`,
+      'Generá el cronograma.'
+    );
+    addMsg('ai', reply);
+  }catch(e){
+    const msg = (e.message==='Failed to fetch')
+      ? 'No se pudo conectar. Revisá que la clave de API esté guardada sin espacios, y si usás Brave, probá desactivar los Shields para este sitio.'
+      : (e.message || 'Error de conexión con la IA.');
+    addMsg('system', msg);
+  }
+  setThinking(false);
+});
+
+/* Autopilot reorganize: AI proposes changes, user must confirm each */
+document.getElementById('qaReorganize').addEventListener('click', async ()=>{
+  setThinking(true);
+  document.getElementById('proposeZone').innerHTML = '<div class="empty">Analizando...</div>';
+  try{
+    const raw = await callClaude(
+      `Sos QUARK, el núcleo de IA de un planner. Se te da una lista de tareas pendientes en JSON. Respondé SOLO con un array JSON (sin texto adicional, sin backticks) de hasta 4 sugerencias, cada objeto con: {"action":"delete"|"edit"|"note", "taskId":"<id o null>", "reason":"<motivo breve en español>", "suggestion":"<qué cambiarías, breve>"}. Usá "delete" solo para tareas claramente duplicadas o vencidas hace mucho; "edit" para reordenar prioridad o fecha; "note" para una observación general sin acción directa. Contexto: ${JSON.stringify(taskContextSummary())}`,
+      'Analizá y sugerí.'
+    );
+    let suggestions = [];
+    try{ suggestions = JSON.parse(raw.replace(/```json|```/g,'').trim()); }catch(e){ suggestions = []; }
+    renderProposals(suggestions);
+  }catch(e){
+    document.getElementById('proposeZone').innerHTML = '<div class="empty">'+(e.message||'Error al analizar.')+'</div>';
+  }
+  setThinking(false);
+});
+function renderProposals(suggestions){
+  const zone = document.getElementById('proposeZone');
+  if(!suggestions.length){ zone.innerHTML = '<div class="empty">Sin sugerencias por ahora.</div>'; return; }
+  zone.innerHTML = suggestions.map((s,i)=>{
+    const task = STATE.tasks.find(t=>t.id===s.taskId);
+    return `<div class="propose-card">
+      <div style="font-size:13px; font-weight:700; color:var(--amber);">${task? task.title : 'Sugerencia general'}</div>
+      <div style="font-size:13px; margin:4px 0;">${s.suggestion||''}</div>
+      <div style="font-size:11px; color:var(--text-dim);">Motivo: ${s.reason||''}</div>
+      ${s.action==='delete' && task ? `<div style="margin-top:8px; display:flex; gap:8px;"><button class="btn small green" onclick="acceptDelete('${task.id}', this)">Aceptar y eliminar</button><button class="btn small ghost" onclick="this.closest('.propose-card').remove()">Rechazar</button></div>`
+      : `<div style="margin-top:8px;"><button class="btn small ghost" onclick="this.closest('.propose-card').remove()">Descartar</button></div>`}
+    </div>`;
+  }).join('');
+}
+window.acceptDelete = async function(taskId, btn){
+  STATE.tasks = STATE.tasks.filter(t=>t.id!==taskId);
+  await saveTasks();
+  btn.closest('.propose-card').remove();
+  renderTasks(); renderCalendar(); renderDashboard();
+};
+
+/* ================= SETTINGS ================= */
+document.getElementById('resetData').addEventListener('click', async ()=>{
+  openModal(`
+    <h3 style="margin-bottom:14px;">¿Borrar todos los datos?</h3>
+    <p style="font-size:13px; color:var(--text-dim); margin-bottom:16px;">Esta acción no se puede deshacer.</p>
+    <div style="display:flex; gap:8px;">
+      <button class="btn red" id="confirmReset">Sí, borrar todo</button>
+      <button class="btn ghost" onclick="closeModal()">Cancelar</button>
+    </div>
+  `);
+  document.getElementById('confirmReset').onclick = async ()=>{
+    for(const k of ['settings-name','settings-autopilot','subjects','tasks','streak-log','ai-chat-log','settings-api-key','lab-favorites']){
+      await sDelete(k);
+    }
+    closeModal();
+    location.reload();
+  };
+});
+document.getElementById('settingsName').addEventListener('change', async e=>{
+  STATE.name = e.target.value || 'Sae';
+  await sSet('settings-name', STATE.name);
+  renderDashboard();
+});
+document.getElementById('saveApiKey').addEventListener('click', async ()=>{
+  const key = document.getElementById('settingsApiKey').value.replace(/\s+/g,'').trim();
+  await sSet('settings-api-key', key);
+  const status = document.getElementById('apiKeyStatus');
+  status.textContent = key ? '✓ Guardada' : 'Clave borrada';
+  setTimeout(()=>status.textContent='', 2500);
+});
+
+/* ================= INIT ================= */
+async function init(){
+  await loadState();
+  document.getElementById('settingsName').value = STATE.name;
+  document.getElementById('settingsApiKey').value = await sGet('settings-api-key', '');
+  renderDashboard();
+  renderCalendar();
+  renderSubjects();
+  renderTasks();
+  renderStats();
+  renderChat();
+  renderUniverseFull();
+  renderMeteorShowers();
+  renderPlanets();
+  await loadFavorites();
+  renderLabConstants();
+  renderFormulas();
+  populateConverter();
+  renderElementGrid();
+  renderTrends();
+  renderOctet();
+  renderGlosario();
+  renderLeyes();
+  renderCalcFormulas();
+  renderSiPrefixes();
+}
+init();
+
+/* Boot sequence de la pantalla de carga */
+function runSplash(){
+  const modules = ['Centro de Control', 'Academia', 'Laboratorio', 'Sociales', 'IA'];
+  const el = document.getElementById('splashModules');
+  el.innerHTML = modules.map(m => `<div class="splash-module"><span class="chk">✔</span>${m}</div>`).join('');
+  const items = el.querySelectorAll('.splash-module');
+  items.forEach((item, i) => setTimeout(()=> item.classList.add('on'), 220*i));
+  const finish = () => document.getElementById('splashScreen').classList.add('hidden');
+  setTimeout(finish, 220*modules.length + 500);
+  document.getElementById('splashScreen').addEventListener('click', finish, {once:true});
+}
+runSplash();
+</script>
+</body>
+</html>
